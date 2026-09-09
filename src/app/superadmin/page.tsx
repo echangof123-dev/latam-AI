@@ -1,10 +1,16 @@
+import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { requireSuperadmin } from "@/lib/guards";
 import { MODULE_CATALOG, VERTICAL_LABEL } from "@/lib/modules";
-import { addPhone, createTenant, setTenantActive, toggleModule } from "./actions";
+import { addPhone, createTenant, saveWhatsappId, setTenantActive, toggleModule } from "./actions";
 
 export default async function SuperadminPage() {
   await requireSuperadmin();
+  const h = await headers();
+  const host = h.get("x-forwarded-host") || h.get("host") || "";
+  const proto = h.get("x-forwarded-proto") || "https";
+  const webhook = host ? `${proto}://${host}/api/channels/whatsapp/webhook` : "/api/channels/whatsapp/webhook";
+  const waReady = Boolean(process.env.WHATSAPP_ACCESS_TOKEN);
   const tenants = await prisma.tenant.findMany({
     include: { phones: true, modules: true, memberships: { include: { user: true } } },
     orderBy: { createdAt: "desc" },
@@ -18,6 +24,21 @@ export default async function SuperadminPage() {
           Crea empresas, asígnales teléfonos y enciende módulos. Los datos nunca se mezclan.
         </p>
       </header>
+
+      <div className="card space-y-2 text-sm">
+        <h2 className="font-semibold text-base">WhatsApp en vivo</h2>
+        <p className="text-slate-400">
+          En Meta for Developers → tu app → WhatsApp → Configuración, pega este webhook. Token de
+          verificación: <code className="text-gold-400">ejeuno-whatsapp</code>. Suscríbete a{" "}
+          <code>messages</code>.
+        </p>
+        <p className="break-all text-gold-400">{webhook}</p>
+        <p className={waReady ? "text-emerald-400" : "text-amber-400"}>
+          {waReady
+            ? "Token de WhatsApp detectado en Render."
+            : "Falta WHATSAPP_ACCESS_TOKEN en Render. Sin eso la IA no responde al chat."}
+        </p>
+      </div>
 
       <form action={createTenant} className="card grid md:grid-cols-3 gap-4">
         <h2 className="md:col-span-3 font-semibold">Nuevo negocio</h2>
@@ -81,10 +102,22 @@ export default async function SuperadminPage() {
 
             <div>
               <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Números</p>
-              <ul className="text-sm space-y-1">
+              <ul className="text-sm space-y-3">
                 {t.phones.map((p) => (
-                  <li key={p.id}>
-                    <span className="text-gold-400">{p.e164}</span> — {p.label}
+                  <li key={p.id} className="space-y-1">
+                    <p>
+                      <span className="text-gold-400">{p.e164}</span> — {p.label}
+                    </p>
+                    <form action={saveWhatsappId} className="flex flex-wrap gap-2">
+                      <input type="hidden" name="id" value={p.id} />
+                      <input
+                        name="whatsappPhoneNumberId"
+                        defaultValue={p.whatsappPhoneNumberId || ""}
+                        placeholder="Phone number ID de Meta"
+                        className="min-w-[200px]"
+                      />
+                      <button className="text-xs bg-ink-800 rounded-lg px-3">Guardar ID WhatsApp</button>
+                    </form>
                   </li>
                 ))}
               </ul>
@@ -92,6 +125,7 @@ export default async function SuperadminPage() {
                 <input type="hidden" name="tenantId" value={t.id} />
                 <input name="e164" placeholder="+57..." required />
                 <input name="label" placeholder="WhatsApp 2" />
+                <input name="whatsappPhoneNumberId" placeholder="Phone number ID Meta" />
                 <button className="text-sm bg-ink-800 rounded-lg px-3">Añadir número</button>
               </form>
             </div>

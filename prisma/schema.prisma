@@ -107,13 +107,14 @@ model TenantModule {
 }
 
 model PhoneNumber {
-  id                String  @id @default(cuid())
-  e164              String  @unique
-  label             String
-  tenantId          String
-  voiceEnabled      Boolean @default(true)
-  messagingEnabled  Boolean @default(true)
-  tenant            Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                    String  @id @default(cuid())
+  e164                  String  @unique
+  label                 String
+  tenantId              String
+  voiceEnabled          Boolean @default(true)
+  messagingEnabled      Boolean @default(true)
+  whatsappPhoneNumberId String?
+  tenant                Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model Branch {
