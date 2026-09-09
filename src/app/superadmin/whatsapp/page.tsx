@@ -1,8 +1,8 @@
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { requireSuperadmin } from "@/lib/guards";
-import { conectarWhatsAppMeta } from "../actions";
 import { CopyField } from "@/components/copy-field";
+import { SaveWhatsappButton } from "@/components/save-whatsapp-button";
 
 function Step({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (
@@ -18,8 +18,13 @@ function Step({ n, title, children }: { n: string; title: string; children: Reac
   );
 }
 
-export default async function WhatsappGuidePage() {
+export default async function WhatsappGuidePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ok?: string; e?: string }>;
+}) {
   await requireSuperadmin();
+  const q = await searchParams;
   const h = await headers();
   const host = h.get("x-forwarded-host") || h.get("host") || "ejeuno.onrender.com";
   const proto = h.get("x-forwarded-proto") || "https";
@@ -31,6 +36,12 @@ export default async function WhatsappGuidePage() {
     where: { e164: "+15556613653" },
   });
 
+  const errors: Record<string, string> = {
+    faltan: "Falta el negocio, el teléfono o el código de Meta.",
+    negocio: "Ese negocio no existe. Elige otro en la lista.",
+    bd: "No se pudo guardar. Revisa que el teléfono no esté repetido.",
+  };
+
   return (
     <div className="max-w-3xl space-y-6">
       <header>
@@ -39,6 +50,15 @@ export default async function WhatsappGuidePage() {
           Cuatro pasos. Primero prueba a Sofía en el chat; esto es solo para el celular.
         </p>
       </header>
+
+      {q.ok ? (
+        <div className="card border-emerald-600 text-lg text-emerald-300">
+          Guardado. Ya puedes escribir Hola al +1 (555) 661-3653.
+        </div>
+      ) : null}
+      {q.e ? (
+        <div className="card border-red-700 text-lg text-red-200">{errors[q.e] || "No se pudo guardar."}</div>
+      ) : null}
 
       <div className={`card text-lg ${connected?.whatsappPhoneNumberId ? "border-emerald-700" : "border-amber-700"}`}>
         {connected?.whatsappPhoneNumberId
@@ -67,7 +87,7 @@ export default async function WhatsappGuidePage() {
 
       <Step n="3" title="Guardar el número aquí">
         <p>Usa solo el WhatsApp de prueba de Meta (+1 555). No uses el de Colombia.</p>
-        <form action={conectarWhatsAppMeta} className="space-y-4">
+        <form method="post" action="/api/superadmin/whatsapp" className="space-y-4">
           <div className="space-y-1">
             <label>Negocio</label>
             <select name="tenantId" defaultValue={barber?.id} className="w-full text-lg py-3" required>
@@ -86,7 +106,7 @@ export default async function WhatsappGuidePage() {
             <label>Código largo de Meta (Phone number ID)</label>
             <input name="metaId" defaultValue="1344096055445731" className="w-full text-lg py-3" required />
           </div>
-          <button className="btn-gold w-full text-xl py-4">Guardar WhatsApp</button>
+          <SaveWhatsappButton />
         </form>
       </Step>
 
