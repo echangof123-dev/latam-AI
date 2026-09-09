@@ -1,0 +1,259 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPERADMIN
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum Vertical {
+  GENERIC
+  CLINIC
+  VET
+  BARBERSHOP
+  HOTEL
+  RESTAURANT
+  WORKSHOP
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  RESCHEDULED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum Channel {
+  WHATSAPP
+  SMS
+  VOICE_CALL
+  WEB
+}
+
+enum NotificationKind {
+  BOOKING_CONFIRMED
+  RESCHEDULED
+  CANCELLED
+  PAYMENT
+  DAILY_SUMMARY
+  AI_ESCALATION
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  passwordHash String
+  name         String
+  role         Role         @default(OWNER)
+  createdAt    DateTime     @default(now())
+  memberships  Membership[]
+}
+
+model Membership {
+  id       String @id @default(cuid())
+  userId   String
+  tenantId String
+  role     Role   @default(OWNER)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+}
+
+model Tenant {
+  id           String         @id @default(cuid())
+  slug         String         @unique
+  name         String
+  vertical     Vertical       @default(GENERIC)
+  timezone     String         @default("America/Bogota")
+  locale       String         @default("es")
+  active       Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  modules      TenantModule[]
+  phones       PhoneNumber[]
+  branches     Branch[]
+  services     Service[]
+  staff        StaffMember[]
+  customers    Customer[]
+  appointments Appointment[]
+  policies     Policy[]
+  inventory    InventoryItem[]
+  invoices     Invoice[]
+  conversations Conversation[]
+  notifications OwnerNotification[]
+  memberships  Membership[]
+  aiMetrics    AiDailyMetric[]
+}
+
+model TenantModule {
+  id       String  @id @default(cuid())
+  tenantId String
+  key      String
+  enabled  Boolean @default(true)
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+}
+
+model PhoneNumber {
+  id                String  @id @default(cuid())
+  e164              String  @unique
+  label             String
+  tenantId          String
+  voiceEnabled      Boolean @default(true)
+  messagingEnabled  Boolean @default(true)
+  tenant            Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Branch {
+  id           String         @id @default(cuid())
+  tenantId     String
+  name         String
+  address      String
+  phone        String?
+  hoursJson    String
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+}
+
+model Service {
+  id           String         @id @default(cuid())
+  tenantId     String
+  name         String
+  durationMin  Int
+  priceCents   Int
+  active       Boolean        @default(true)
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+}
+
+model StaffMember {
+  id           String         @id @default(cuid())
+  tenantId     String
+  name         String
+  roleTitle    String
+  active       Boolean        @default(true)
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+}
+
+model Customer {
+  id           String         @id @default(cuid())
+  tenantId     String
+  name         String
+  phone        String
+  email        String?
+  notes        String?
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@unique([tenantId, phone])
+}
+
+model Appointment {
+  id          String            @id @default(cuid())
+  tenantId    String
+  customerId  String
+  serviceId   String
+  staffId     String?
+  branchId    String?
+  startsAt    DateTime
+  endsAt      DateTime
+  status      AppointmentStatus @default(CONFIRMED)
+  source      Channel           @default(WHATSAPP)
+  notes       String?
+  createdAt   DateTime          @default(now())
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer    Customer          @relation(fields: [customerId], references: [id])
+  service     Service           @relation(fields: [serviceId], references: [id])
+  staff       StaffMember?      @relation(fields: [staffId], references: [id])
+  branch      Branch?           @relation(fields: [branchId], references: [id])
+}
+
+model Policy {
+  id       String @id @default(cuid())
+  tenantId String
+  key      String
+  value    String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+}
+
+model InventoryItem {
+  id        String @id @default(cuid())
+  tenantId  String
+  name      String
+  sku       String
+  qty       Int    @default(0)
+  costCents Int    @default(0)
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, sku])
+}
+
+model Invoice {
+  id         String   @id @default(cuid())
+  tenantId   String
+  number     String
+  totalCents Int
+  status     String   @default("paid")
+  issuedAt   DateTime @default(now())
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, number])
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  tenantId  String
+  customerPhone String
+  channel   Channel
+  createdAt DateTime  @default(now())
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  messages  Message[]
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  role           String
+  body           String
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model OwnerNotification {
+  id        String           @id @default(cuid())
+  tenantId  String
+  kind      NotificationKind
+  title     String
+  body      String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model AiDailyMetric {
+  id             String   @id @default(cuid())
+  tenantId       String
+  day            DateTime
+  conversations  Int      @default(0)
+  bookings       Int      @default(0)
+  cancellations  Int      @default(0)
+  handoffs       Int      @default(0)
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, day])
+}

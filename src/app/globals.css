@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-ink-950 text-slate-100 antialiased;
+}
+
+input,
+select,
+textarea {
+  @apply bg-ink-900 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-gold-500;
+}
+
+label {
+  @apply text-xs uppercase tracking-wide text-slate-400;
+}
+
+.card {
+  @apply rounded-2xl border border-ink-700 bg-ink-900/70 p-5 shadow-xl shadow-black/20;
+}
