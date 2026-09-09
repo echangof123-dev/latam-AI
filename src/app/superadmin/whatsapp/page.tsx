@@ -78,12 +78,32 @@ export default async function WhatsappGuidePage({
       </div>
 
       <Step n="1" title="Poner el token en Render">
-        <p>Entra a Render → servicio ejeuno → Environment.</p>
-        <p>
-          Debe existir <b>WHATSAPP_ACCESS_TOKEN</b>.
-        </p>
+        <p>Eso no se guarda aquí. Se pega en Render, si no WhatsApp no contesta.</p>
+        <ol className="list-decimal pl-6 space-y-2">
+          <li>
+            Abre{" "}
+            <a className="text-gold-400 underline" href="https://dashboard.render.com" target="_blank" rel="noreferrer">
+              dashboard.render.com
+            </a>
+          </li>
+          <li>Entra al servicio <b>ejeuno</b>.</li>
+          <li>Menú <b>Environment</b>.</li>
+          <li>
+            <b>Add Environment Variable</b>. Nombre exacto:
+            <CopyField value="WHATSAPP_ACCESS_TOKEN" />
+          </li>
+          <li>
+            En Facebook Developers, tu app de WhatsApp, <b>Paso 1 · Pruébalo</b>, copia el <b>token de acceso</b>{" "}
+            (empieza por EAA…). Pégalo en Value. Sin comillas.
+          </li>
+          <li>
+            <b>Save Changes</b>. Espera a que Render reinicie. Luego recarga esta página.
+          </li>
+        </ol>
         <p className={tokenOk ? "text-emerald-400 font-medium" : "text-amber-400 font-medium"}>
-          {tokenOk ? "Bien: el token ya está en el servidor." : "Falta el token. Sin eso no responde."}
+          {tokenOk
+            ? "Bien: el token ya está en el servidor."
+            : "Todavía no está. Hasta que Render lo tenga, WhatsApp no responde."}
         </p>
       </Step>
 
