@@ -11,8 +11,9 @@ export default async function SuperadminLayout({ children }: { children: React.R
         <Brand />
         <p className="text-xs text-slate-500">Panel central · {count} negocios</p>
         <nav className="space-y-1">
-          <NavLink href="/superadmin">Negocios y números</NavLink>
-          <NavLink href="/superadmin/canal">Probar canal IA</NavLink>
+          <NavLink href="/superadmin/whatsapp">1. Conectar WhatsApp</NavLink>
+          <NavLink href="/superadmin/canal">2. Probar IA aquí</NavLink>
+          <NavLink href="/superadmin">3. Negocios</NavLink>
         </nav>
         <div className="pt-8 text-sm text-slate-400">
           <p>{session.name}</p>

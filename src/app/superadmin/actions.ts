@@ -86,6 +86,22 @@ export async function saveWhatsappId(formData: FormData) {
   if (!id) return;
   await prisma.phoneNumber.update({ where: { id }, data: { whatsappPhoneNumberId } });
   revalidatePath("/superadmin");
+  revalidatePath("/superadmin/whatsapp");
+}
+
+export async function conectarWhatsAppMeta(formData: FormData) {
+  await requireSuperadmin();
+  const tenantId = String(formData.get("tenantId") || "").trim();
+  const e164 = String(formData.get("e164") || "+15556613653").replace(/\s/g, "");
+  const metaId = String(formData.get("metaId") || "").trim();
+  if (!tenantId || !e164 || !metaId) return;
+  await prisma.phoneNumber.upsert({
+    where: { e164 },
+    update: { tenantId, whatsappPhoneNumberId: metaId, label: "WhatsApp Meta" },
+    create: { e164, tenantId, whatsappPhoneNumberId: metaId, label: "WhatsApp Meta" },
+  });
+  revalidatePath("/superadmin");
+  revalidatePath("/superadmin/whatsapp");
 }
 
 export async function setTenantActive(formData: FormData) {

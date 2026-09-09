@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { requireSuperadmin } from "@/lib/guards";
 import { MODULE_CATALOG, VERTICAL_LABEL } from "@/lib/modules";
-import { addPhone, createTenant, saveWhatsappId, setTenantActive, toggleModule } from "./actions";
+import { createTenant, setTenantActive, toggleModule } from "./actions";
 
 export default async function SuperadminPage() {
   await requireSuperadmin();
@@ -101,33 +101,27 @@ export default async function SuperadminPage() {
             </div>
 
             <div>
-              <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Números</p>
-              <ul className="text-sm space-y-3">
+              <p className="text-sm text-white mb-2">Teléfonos de este negocio</p>
+              <ul className="space-y-2">
                 {t.phones.map((p) => (
-                  <li key={p.id} className="space-y-1">
-                    <p>
-                      <span className="text-gold-400">{p.e164}</span> — {p.label}
+                  <li key={p.id} className="rounded-xl bg-ink-950/80 p-3">
+                    <p className="text-lg text-gold-400">{p.e164}</p>
+                    <p className="text-sm text-slate-400">
+                      {p.e164.includes("555")
+                        ? "Este es el WhatsApp de prueba de Meta. Úsalo para escribir Hola."
+                        : "Número de demostración. No lo uses para las pruebas de Meta."}
                     </p>
-                    <form action={saveWhatsappId} className="flex flex-wrap gap-2">
-                      <input type="hidden" name="id" value={p.id} />
-                      <input
-                        name="whatsappPhoneNumberId"
-                        defaultValue={p.whatsappPhoneNumberId || ""}
-                        placeholder="Phone number ID de Meta"
-                        className="min-w-[200px]"
-                      />
-                      <button className="text-xs bg-ink-800 rounded-lg px-3">Guardar ID WhatsApp</button>
-                    </form>
+                    {p.whatsappPhoneNumberId ? (
+                      <p className="text-sm text-emerald-400 mt-1">Conectado a Meta</p>
+                    ) : (
+                      <p className="text-sm text-slate-500 mt-1">Sin ID de Meta</p>
+                    )}
                   </li>
                 ))}
               </ul>
-              <form action={addPhone} className="mt-3 flex flex-wrap gap-2">
-                <input type="hidden" name="tenantId" value={t.id} />
-                <input name="e164" placeholder="+57..." required />
-                <input name="label" placeholder="WhatsApp 2" />
-                <input name="whatsappPhoneNumberId" placeholder="Phone number ID Meta" />
-                <button className="text-sm bg-ink-800 rounded-lg px-3">Añadir número</button>
-              </form>
+              <p className="text-sm text-slate-400 mt-3">
+                Para conectar WhatsApp abre el menú <b>1. Conectar WhatsApp</b>.
+              </p>
             </div>
 
             <div>
