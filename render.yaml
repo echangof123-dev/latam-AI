@@ -1,0 +1,30 @@
+# Eje Uno en Render: Postgres + web con URL https
+# https://dashboard.render.com/blueprints
+
+databases:
+  - name: ejeuno-db
+    plan: basic-256mb
+
+services:
+  - type: web
+    name: ejeuno-web
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ejeuno-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: RUN_SEED
+        value: "true"
+      - key: APP_URL
+        fromService:
+          type: web
+          name: ejeuno-web
+          property: host

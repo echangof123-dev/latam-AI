@@ -1,0 +1,35 @@
+{
+  "name": "ejeuno",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "node prisma/seed.mjs",
+    "db:reset": "prisma migrate reset --force"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.9.0",
+    "bcryptjs": "^3.0.2",
+    "next": "^15.3.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^3.25.56"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.15.29",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.4",
+    "prisma": "^6.9.0",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3"
+  }
+}
