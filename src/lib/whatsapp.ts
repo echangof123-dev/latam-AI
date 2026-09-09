@@ -1,12 +1,13 @@
 import { prisma } from "./db";
 import { handleInbound } from "./ai/engine";
+import { whatsappTrace } from "./whatsapp-trace";
 
 const GRAPH = "https://graph.facebook.com/v25.0";
 
 export function toE164(raw: string) {
   const digits = String(raw || "").replace(/\D/g, "");
   if (!digits) return "";
-  return digits.startsWith("+") ? `+${digits}` : `+${digits}`;
+  return `+${digits}`;
 }
 
 export async function findPhoneRecord(opts: { display?: string; phoneNumberId?: string }) {
@@ -17,32 +18,60 @@ export async function findPhoneRecord(opts: { display?: string; phoneNumberId?: 
     if (byId) return byId;
   }
   const e164 = toE164(opts.display || "");
-  if (!e164) return null;
-  return prisma.phoneNumber.findUnique({ where: { e164 } });
+  if (e164) {
+    const exact = await prisma.phoneNumber.findUnique({ where: { e164 } });
+    if (exact) return exact;
+    const digits = e164.replace(/\D/g, "");
+    const all = await prisma.phoneNumber.findMany();
+    const hit = all.find((p) => p.e164.replace(/\D/g, "") === digits);
+    if (hit) return hit;
+  }
+  return prisma.phoneNumber.findFirst({
+    where: { whatsappPhoneNumberId: { not: null } },
+  });
 }
 
-export async function sendWhatsAppText(phoneNumberId: string, to: string, body: string) {
+export async function sendWhatsAppText(
+  phoneNumberId: string,
+  to: string,
+  body: string,
+  contextId?: string,
+) {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   if (!token || !phoneNumberId) {
-    console.error("WhatsApp: falta WHATSAPP_ACCESS_TOKEN o phone_number_id");
-    return;
+    const err = "Falta WHATSAPP_ACCESS_TOKEN o el ID del número";
+    whatsappTrace.lastSendOk = false;
+    whatsappTrace.lastSendError = err;
+    console.error("WhatsApp:", err);
+    return false;
   }
+  const payload: Record<string, unknown> = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: to.replace(/\D/g, ""),
+    type: "text",
+    text: { preview_url: false, body: body.slice(0, 4000) },
+  };
+  if (contextId) payload.context = { message_id: contextId };
+
   const res = await fetch(`${GRAPH}/${phoneNumberId}/messages`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: to.replace(/\D/g, ""),
-      type: "text",
-      text: { preview_url: false, body: body.slice(0, 4000) },
-    }),
+    body: JSON.stringify(payload),
   });
+  const raw = await res.text();
   if (!res.ok) {
-    console.error("WhatsApp send error", res.status, await res.text());
+    whatsappTrace.lastSendOk = false;
+    whatsappTrace.lastSendError = `${res.status} ${raw.slice(0, 400)}`;
+    console.error("WhatsApp send error", res.status, raw);
+    return false;
   }
+  whatsappTrace.lastSendOk = true;
+  whatsappTrace.lastSendError = "";
+  return true;
 }
 
 async function transcribeAudio(mediaId: string) {
@@ -79,6 +108,7 @@ export async function handleWhatsAppWebhook(payload: unknown) {
         value?: {
           metadata?: { display_phone_number?: string; phone_number_id?: string };
           messages?: Array<{
+            id?: string;
             from: string;
             type: string;
             text?: { body?: string };
@@ -89,7 +119,9 @@ export async function handleWhatsAppWebhook(payload: unknown) {
       }>;
     }>;
   };
-  if (body.object !== "whatsapp_business_account") return;
+
+  whatsappTrace.lastWebhookAt = new Date().toISOString();
+  whatsappTrace.lastHint = "Llegó un aviso de Meta, pero aún no hay un mensaje de texto.";
 
   for (const entry of body.entry || []) {
     for (const change of entry.changes || []) {
@@ -99,7 +131,7 @@ export async function handleWhatsAppWebhook(payload: unknown) {
       const phoneNumberId = value?.metadata?.phone_number_id || "";
       const display = value?.metadata?.display_phone_number || "";
       const record = await findPhoneRecord({ display, phoneNumberId });
-      const to = record?.e164 || toE164(display);
+      const to = record?.e164 || toE164(display) || "+15556613653";
       const replyId = record?.whatsappPhoneNumberId || phoneNumberId;
 
       for (const msg of messages) {
@@ -112,13 +144,35 @@ export async function handleWhatsAppWebhook(payload: unknown) {
           text = "Hola";
         }
         if (!text) continue;
-        const result = await handleInbound({
-          to,
-          from: toE164(msg.from),
-          text,
-          channel: msg.type === "audio" || msg.type === "voice" ? "VOICE_CALL" : "WHATSAPP",
-        });
-        if (replyId) await sendWhatsAppText(replyId, msg.from, result.reply);
+
+        whatsappTrace.lastFrom = msg.from;
+        whatsappTrace.lastText = text;
+        whatsappTrace.lastHint = "Recibí tu mensaje. Voy a contestar.";
+
+        let reply =
+          "Hola, soy Sofía, la recepción. ¿En qué te ayudo? Puedo dar precios y agendar.";
+        try {
+          const result = await handleInbound({
+            to,
+            from: toE164(msg.from),
+            text,
+            channel: msg.type === "audio" || msg.type === "voice" ? "VOICE_CALL" : "WHATSAPP",
+          });
+          reply = result.reply || reply;
+        } catch (err) {
+          console.error("WhatsApp inbound", err);
+        }
+        whatsappTrace.lastReply = reply;
+        if (replyId) {
+          const ok = await sendWhatsAppText(replyId, msg.from, reply, msg.id);
+          whatsappTrace.lastHint = ok
+            ? "Ya contesté por WhatsApp."
+            : "Recibí el mensaje pero Meta no dejó enviar la respuesta. Revisa el token.";
+        } else {
+          whatsappTrace.lastSendOk = false;
+          whatsappTrace.lastSendError = "No hay Phone number ID para responder.";
+          whatsappTrace.lastHint = "Falta guardar el código de Meta (paso 3).";
+        }
       }
     }
   }

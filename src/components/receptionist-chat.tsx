@@ -55,7 +55,12 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
 
   async function send(raw: string, channel: "WEB" | "VOICE_CALL" = "WEB") {
     const clean = raw.trim();
-    if (!clean || !to || busy) return;
+    if (!clean) return;
+    if (!to) {
+      setMsgs((m) => [...m, { role: "ai", text: "Elige un negocio arriba y vuelve a enviar." }]);
+      return;
+    }
+    if (busy) return;
     setBusy(true);
     setMsgs((m) => [...m, { role: "user", text: clean }]);
     setText("");
@@ -65,8 +70,10 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ to, from: fromPhone, text: clean, channel }),
       });
-      const data = await res.json();
-      const reply = data.reply || "No pude responder ahora.";
+      const data = await res.json().catch(() => null);
+      const reply =
+        data?.reply ||
+        (res.ok ? "No pude responder ahora." : "El servidor no respondió. Espera un minuto y reintenta.");
       setMsgs((m) => [...m, { role: "ai", text: reply }]);
       speak(reply);
     } catch {
@@ -148,6 +155,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
         className="border-t border-white/10 p-4 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           void send(text);
         }}
       >

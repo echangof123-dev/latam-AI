@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireSuperadmin } from "@/lib/guards";
 import { CopyField } from "@/components/copy-field";
 import { WhatsappSaveForm } from "@/components/whatsapp-save-form";
+import { whatsappTrace } from "@/lib/whatsapp-trace";
 
 function Step({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (
@@ -60,10 +61,20 @@ export default async function WhatsappGuidePage({
         <div className="card border-red-700 text-lg text-red-200">{errors[q.e] || "No se pudo guardar."}</div>
       ) : null}
 
-      <div className={`card text-lg ${connected?.whatsappPhoneNumberId ? "border-emerald-700" : "border-amber-700"}`}>
-        {connected?.whatsappPhoneNumberId
-          ? "El WhatsApp de prueba ya está guardado."
-          : "Falta guardar el WhatsApp de prueba (paso 3)."}
+      <div className="card space-y-2">
+        <p className="font-semibold">¿Llegó tu Hola?</p>
+        <p className="text-slate-300">{whatsappTrace.lastHint}</p>
+        {whatsappTrace.lastWebhookAt ? (
+          <p className="text-sm text-slate-500">Último aviso: {whatsappTrace.lastWebhookAt}</p>
+        ) : null}
+        {whatsappTrace.lastText ? (
+          <p className="text-sm text-slate-400">
+            Escribiste: “{whatsappTrace.lastText}” · Respondí: “{whatsappTrace.lastReply.slice(0, 120)}”
+          </p>
+        ) : null}
+        {whatsappTrace.lastSendError ? (
+          <p className="text-sm text-red-300">{whatsappTrace.lastSendError}</p>
+        ) : null}
       </div>
 
       <Step n="1" title="Poner el token en Render">

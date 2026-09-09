@@ -11,12 +11,21 @@ const tenantInclude = {
 } satisfies Prisma.TenantInclude;
 
 export async function resolveTenantByNumber(e164: string) {
-  const phone = await prisma.phoneNumber.findUnique({
-    where: { e164 },
+  const digits = String(e164 || "").replace(/\D/g, "");
+  if (!digits) return null;
+  const variants = [`+${digits}`, digits, String(e164 || "")];
+  for (const v of variants) {
+    if (!v) continue;
+    const phone = await prisma.phoneNumber.findUnique({
+      where: { e164: v },
+      include: { tenant: { include: tenantInclude } },
+    });
+    if (phone?.tenant.active) return phone;
+  }
+  const phones = await prisma.phoneNumber.findMany({
     include: { tenant: { include: tenantInclude } },
   });
-  if (!phone || !phone.tenant.active) return null;
-  return phone;
+  return phones.find((p) => p.e164.replace(/\D/g, "") === digits && p.tenant.active) || null;
 }
 
 export function moduleOn(

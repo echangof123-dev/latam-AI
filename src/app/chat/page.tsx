@@ -13,7 +13,10 @@ export default async function ChatPage() {
   const businesses = tenants
     .filter((t) => t.modules.some((m) => m.key === "ia" && m.enabled) && t.phones[0])
     .map((t) => {
-      const meta = t.phones.find((p) => p.e164.includes("555")) || t.phones[0];
+      const meta =
+        t.phones.find((p) => p.whatsappPhoneNumberId) ||
+        t.phones.find((p) => p.e164.includes("555")) ||
+        t.phones[0];
       return { name: t.name, phone: meta.e164 };
     })
     .sort((a, b) => Number(b.phone.includes("555")) - Number(a.phone.includes("555")));

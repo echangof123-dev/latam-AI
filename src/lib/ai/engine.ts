@@ -143,7 +143,7 @@ async function decide(opts: {
     }
   }
 
-  if (/hola|buenas|buenos días|buenas tardes/.test(low) && low.length < 40) {
+  if (/h+o+l+[ao]|hoka|holi|buenas|buenos d[ií]as|buenas tardes|\bhi\b|\bhey\b/.test(low) && low.length < 50) {
     const who = customer ? `Hola ${customer.name.split(" ")[0]}.` : "Hola.";
     const list = tenant.services.map((s) => s.name).join(", ");
     return `${who} ${greeting} ¿En qué te ayudo? Puedo agendar, cambiar o cancelar. Servicios: ${list}.`;
