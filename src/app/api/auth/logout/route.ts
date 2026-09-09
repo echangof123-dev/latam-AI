@@ -1,7 +1,9 @@
-import { NextResponse } from "next/server";
 import { clearSessionCookie } from "@/lib/auth";
+import { redirectTo } from "@/lib/http";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   await clearSessionCookie();
-  return NextResponse.redirect(new URL("/login", req.url), 303);
+  return redirectTo(req, "/login");
 }

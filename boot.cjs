@@ -47,7 +47,7 @@ const port = String(process.env.PORT || "3000");
 console.log("Arrancando Next en 0.0.0.0:" + port);
 const child = spawn(node, [nextCli, "start", "-H", "0.0.0.0", "-p", port], {
   cwd: root,
-  env: { ...process.env, PORT: port, HOSTNAME: "0.0.0.0" },
+  env: { ...process.env, PORT: port },
   stdio: "inherit",
 });
 child.on("exit", (code) => process.exit(code ?? 1));
