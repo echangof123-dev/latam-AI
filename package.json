@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "node scripts/boot.cjs",
+    "start": "node boot.cjs",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "node prisma/seed.mjs",
     "db:reset": "prisma migrate reset --force"
