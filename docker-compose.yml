@@ -23,7 +23,8 @@ services:
       DATABASE_URL: postgresql://ejeuno:ejeuno@db:5432/ejeuno
       AUTH_SECRET: ejeuno-dev-secret-cambia-en-prod
       APP_URL: http://localhost:3000
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      PORT: "3000"
+      RUN_SEED: "true"
     depends_on:
       db:
         condition: service_healthy
