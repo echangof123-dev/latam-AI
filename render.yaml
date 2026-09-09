@@ -1,0 +1,25 @@
+databases:
+  - name: ejeuno-db
+    plan: basic-256mb
+
+services:
+  - type: web
+    name: ejeuno
+    runtime: node
+    plan: starter
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: node boot.cjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ejeuno-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: WHATSAPP_VERIFY_TOKEN
+        value: ejeuno-whatsapp
