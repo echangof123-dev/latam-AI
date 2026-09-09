@@ -4,12 +4,15 @@ databases:
 
 services:
   - type: web
-    name: ejeuno-web
-    runtime: docker
+    name: ejeuno
+    runtime: node
     plan: starter
-    dockerfilePath: ./Dockerfile
+    buildCommand: npm install && npm run build
+    startCommand: node scripts/boot.cjs
     healthCheckPath: /api/health
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: HOSTNAME
