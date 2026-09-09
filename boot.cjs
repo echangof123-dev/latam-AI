@@ -35,6 +35,7 @@ for (let i = 1; i <= 8; i++) {
 }
 
 console.log("Cargando datos de demo...");
+run([path.join(root, "prisma", "ensure-column.cjs")]);
 run([path.join(root, "prisma", "seed.mjs")]);
 
 const env = { ...process.env, PORT: port };
