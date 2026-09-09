@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { NextResponse } from "next/server";
 import { redirectTo } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,15 @@ function digitsPhone(raw: string) {
 
 export async function POST(req: Request) {
   const session = await getSession();
+  const wantsJson = (req.headers.get("accept") || "").includes("application/json");
+
+  function fail(code: string) {
+    if (wantsJson) return NextResponse.json({ ok: false, error: code }, { status: 400 });
+    return redirectTo(req, `/superadmin/whatsapp?e=${code}`);
+  }
+
   if (!session || session.role !== "SUPERADMIN") {
+    if (wantsJson) return NextResponse.json({ ok: false, error: "login" }, { status: 401 });
     return redirectTo(req, "/login");
   }
 
@@ -20,14 +29,10 @@ export async function POST(req: Request) {
   const e164 = digitsPhone(String(form?.get("e164") || "+15556613653"));
   const metaId = String(form?.get("metaId") || "").trim();
 
-  if (!tenantId || !e164 || !metaId) {
-    return redirectTo(req, "/superadmin/whatsapp?e=faltan");
-  }
+  if (!tenantId || !e164 || !metaId) return fail("faltan");
 
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-  if (!tenant) {
-    return redirectTo(req, "/superadmin/whatsapp?e=negocio");
-  }
+  if (!tenant) return fail("negocio");
 
   try {
     await prisma.phoneNumber.upsert({
@@ -36,8 +41,9 @@ export async function POST(req: Request) {
       create: { e164, tenantId, whatsappPhoneNumberId: metaId, label: "WhatsApp Meta" },
     });
   } catch {
-    return redirectTo(req, "/superadmin/whatsapp?e=bd");
+    return fail("bd");
   }
 
+  if (wantsJson) return NextResponse.json({ ok: true });
   return redirectTo(req, "/superadmin/whatsapp?ok=1");
 }

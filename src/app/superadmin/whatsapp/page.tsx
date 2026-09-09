@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { requireSuperadmin } from "@/lib/guards";
 import { CopyField } from "@/components/copy-field";
-import { SaveWhatsappButton } from "@/components/save-whatsapp-button";
+import { WhatsappSaveForm } from "@/components/whatsapp-save-form";
 
 function Step({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (
@@ -87,27 +87,7 @@ export default async function WhatsappGuidePage({
 
       <Step n="3" title="Guardar el número aquí">
         <p>Usa solo el WhatsApp de prueba de Meta (+1 555). No uses el de Colombia.</p>
-        <form method="post" action="/api/superadmin/whatsapp" className="space-y-4">
-          <div className="space-y-1">
-            <label>Negocio</label>
-            <select name="tenantId" defaultValue={barber?.id} className="w-full text-lg py-3" required>
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label>Teléfono (déjalo así)</label>
-            <input name="e164" defaultValue="+15556613653" className="w-full text-lg py-3" required />
-          </div>
-          <div className="space-y-1">
-            <label>Código largo de Meta (Phone number ID)</label>
-            <input name="metaId" defaultValue="1344096055445731" className="w-full text-lg py-3" required />
-          </div>
-          <SaveWhatsappButton />
-        </form>
+        <WhatsappSaveForm tenants={tenants.map((t) => ({ id: t.id, name: t.name }))} defaultTenantId={barber?.id} />
       </Step>
 
       <Step n="4" title="Escribe Hola en tu celular">
