@@ -1,10 +1,12 @@
 const { spawn, spawnSync } = require("child_process");
 const path = require("path");
+const fs = require("fs");
 
 const root = __dirname;
 const node = process.execPath;
 const prismaCli = path.join(root, "node_modules", "prisma", "build", "index.js");
 const nextCli = path.join(root, "node_modules", "next", "dist", "bin", "next");
+const standalone = path.join(root, "server.js");
 
 function sleep(seconds) {
   spawnSync(
@@ -22,32 +24,32 @@ if (process.env.RENDER && process.env.DATABASE_URL && !String(process.env.DATABA
   process.env.DATABASE_URL = u.includes("?") ? `${u}&sslmode=require` : `${u}?sslmode=require`;
 }
 
-console.log("Puerto:", process.env.PORT || "3000");
+const port = String(process.env.PORT || "3000");
+console.log("Puerto:", port);
 console.log("DATABASE_URL definida:", Boolean(process.env.DATABASE_URL));
 
-let migrated = false;
-for (let i = 1; i <= 15; i++) {
+for (let i = 1; i <= 8; i++) {
   console.log("Prisma migrate, intento", i);
-  if (run([prismaCli, "migrate", "deploy"]) === 0) {
-    migrated = true;
-    break;
-  }
-  sleep(3);
+  if (run([prismaCli, "migrate", "deploy"]) === 0) break;
+  sleep(2);
 }
 
-if (!migrated) {
-  console.error("La migración no completó. Arrancamos el HTTP igual para evitar 502.");
-}
+console.log("Cargando datos de demo...");
+run([path.join(root, "prisma", "seed.mjs")]);
 
-if (process.env.RUN_SEED === "true") {
-  run([path.join(root, "prisma", "seed.mjs")]);
-}
+const env = { ...process.env, PORT: port };
+delete env.HOSTNAME;
 
-const port = String(process.env.PORT || "3000");
-console.log("Arrancando Next en 0.0.0.0:" + port);
-const child = spawn(node, [nextCli, "start", "-H", "0.0.0.0", "-p", port], {
-  cwd: root,
-  env: { ...process.env, PORT: port },
-  stdio: "inherit",
-});
+console.log("Arrancando HTTP en 0.0.0.0:" + port);
+const child = fs.existsSync(standalone)
+  ? spawn(node, [standalone], {
+      cwd: root,
+      env: { ...env, HOSTNAME: "0.0.0.0" },
+      stdio: "inherit",
+    })
+  : spawn(node, [nextCli, "start", "-H", "0.0.0.0", "-p", port], {
+      cwd: root,
+      env,
+      stdio: "inherit",
+    });
 child.on("exit", (code) => process.exit(code ?? 1));
