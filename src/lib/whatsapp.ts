@@ -164,7 +164,7 @@ export async function handleWhatsAppWebhook(payload: unknown) {
         }
         whatsappTrace.lastReply = reply;
         if (replyId) {
-          const ok = await sendWhatsAppText(replyId, msg.from, reply, msg.id);
+          const ok = await sendWhatsAppText(replyId, msg.from, reply);
           whatsappTrace.lastHint = ok
             ? "Ya contesté por WhatsApp."
             : "Recibí el mensaje pero Meta no dejó enviar la respuesta. Revisa el token.";

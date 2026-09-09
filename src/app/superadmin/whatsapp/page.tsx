@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireSuperadmin } from "@/lib/guards";
 import { CopyField } from "@/components/copy-field";
 import { WhatsappSaveForm } from "@/components/whatsapp-save-form";
+import { WhatsappRepairButton } from "@/components/whatsapp-repair-button";
 import { whatsappTrace } from "@/lib/whatsapp-trace";
 
 function Step({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
@@ -61,7 +62,7 @@ export default async function WhatsappGuidePage({
         <div className="card border-red-700 text-lg text-red-200">{errors[q.e] || "No se pudo guardar."}</div>
       ) : null}
 
-      <div className="card space-y-2">
+      <div className="card space-y-3">
         <p className="font-semibold">¿Llegó tu Hola?</p>
         <p className="text-slate-300">{whatsappTrace.lastHint}</p>
         {whatsappTrace.lastWebhookAt ? (
@@ -75,6 +76,10 @@ export default async function WhatsappGuidePage({
         {whatsappTrace.lastSendError ? (
           <p className="text-sm text-red-300">{whatsappTrace.lastSendError}</p>
         ) : null}
+        <p className="text-slate-400">
+          El token ya está. Si WhatsApp no contesta, Meta no está avisando. Pulsa el botón:
+        </p>
+        <WhatsappRepairButton />
       </div>
 
       <Step n="1" title="Poner el token en Render">

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleWhatsAppWebhook } from "@/lib/whatsapp";
+import { whatsappTrace } from "@/lib/whatsapp-trace";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const json = await req.json().catch(() => null);
+  whatsappTrace.lastWebhookAt = new Date().toISOString();
+  whatsappTrace.lastHint = json
+    ? "Meta avisó al servidor (puede ser un estado, no un Hola)."
+    : "Llegó un aviso vacío de Meta.";
   try {
     await handleWhatsAppWebhook(json);
   } catch (err) {
