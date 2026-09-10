@@ -27,7 +27,9 @@ export default async function ChatPage() {
         <div>
           <p className="text-gold-400 font-semibold">Eje Uno</p>
           <h1 className="font-display text-4xl mt-1">Habla con Sofía</h1>
-          <p className="text-slate-400 mt-2">Texto, voz ChatGPT y avatar. Aprende de los datos del negocio.</p>
+          <p className="text-slate-400 mt-2">
+            Texto y voz aquí; en WhatsApp también entiende notas de audio y responde hablado.
+          </p>
         </div>
         <Link href="/login" className="btn-ghost text-sm">
           Entrar al panel

@@ -14,7 +14,8 @@ export default async function IaPage() {
     <div className="space-y-6 max-w-3xl">
       <h1 className="font-display text-4xl">Atención IA</h1>
       <p className="text-slate-400">
-        Sofía atiende por chat, voz y WhatsApp. Aquí no ves las charlas: solo números y resultados.
+        Sofía atiende por chat, voz y WhatsApp (texto y notas de audio). Aquí no ves las charlas: solo
+        reservas y resultados.
       </p>
       <Link href="/chat" className="btn-gold inline-block">
         Hablar con Sofía ahora

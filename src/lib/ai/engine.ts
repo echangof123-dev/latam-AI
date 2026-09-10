@@ -1,16 +1,7 @@
 import { prisma } from "../db";
 import { resolveTenantByNumber, moduleOn } from "../tenant";
 import type { Channel, Tenant } from "@prisma/client";
-import {
-  bump,
-  cancelAppointment,
-  ensureCustomer,
-  fmt,
-  nextSlot,
-  notify,
-  pickService,
-  rescheduleAppointment,
-} from "./booking";
+import { bump, bookAppointment, cancelAppointment, ensureCustomer, rescheduleAppointment } from "./booking";
 import { generateReply, synthesizeVoice } from "./openai-agent";
 
 type Inbound = {
@@ -130,39 +121,13 @@ async function decide(opts: {
 
   if (/agend|reserv|cita|turno|quiero un|necesito/.test(low)) {
     if (!customer) return `${greeting} Con gusto. ¿Cómo te llamas para dejar la reserva?`;
-    const service = pickService(tenant, low);
-    if (!service) return `${greeting} Aún no hay servicios cargados en este negocio.`;
-    const clash = await prisma.appointment.findFirst({
-      where: {
-        tenantId: tenant.id,
-        status: { in: ["CONFIRMED", "PENDING", "RESCHEDULED"] },
-        startsAt: { gte: new Date() },
-      },
-      orderBy: { startsAt: "desc" },
+    return bookAppointment({
+      tenant,
+      from,
+      channel,
+      serviceHint: low,
+      customerName: customer.name,
     });
-    const base = clash ? new Date(clash.endsAt) : new Date();
-    const slot = nextSlot(base, service.durationMin);
-    await prisma.appointment.create({
-      data: {
-        tenantId: tenant.id,
-        customerId: customer.id,
-        serviceId: service.id,
-        staffId: tenant.staff[0]?.id,
-        branchId: tenant.branches[0]?.id,
-        startsAt: slot.start,
-        endsAt: slot.end,
-        status: "CONFIRMED",
-        source: channel,
-      },
-    });
-    await notify(
-      tenant.id,
-      "BOOKING_CONFIRMED",
-      "Reserva confirmada",
-      `${customer.name} — ${service.name} el ${fmt(slot.start)}.`,
-    );
-    await bump(tenant.id, "bookings");
-    return `${greeting} Confirmado, ${customer.name.split(" ")[0]}. ${service.name} el ${fmt(slot.start)} con ${tenant.staff[0]?.name || "el equipo"}. Te esperamos.`;
   }
 
   return `${greeting} Puedo informar precios, horarios y agendar. Dime tu nombre y qué necesitas.`;

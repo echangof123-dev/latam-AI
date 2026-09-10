@@ -1,7 +1,13 @@
 import { prisma } from "../db";
 import type { Channel } from "@prisma/client";
 import { businessKnowledge } from "./knowledge";
-import { bookAppointment, cancelAppointment, ensureCustomer, rescheduleAppointment } from "./booking";
+import {
+  bookAppointment,
+  cancelAppointment,
+  ensureCustomer,
+  listAvailability,
+  rescheduleAppointment,
+} from "./booking";
 
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
@@ -29,13 +35,28 @@ const tools = [
   {
     type: "function" as const,
     function: {
+      name: "ver_disponibilidad",
+      description: "Lista huecos libres según horario de sede y citas ya ocupadas.",
+      parameters: {
+        type: "object",
+        properties: { servicio: { type: "string" } },
+        required: ["servicio"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "agendar",
-      description: "Crea una cita. Usa un servicio del catálogo.",
+      description:
+        "Crea una reserva en un hueco libre. Si no hay hora, usa el primer hueco. cuando en hora de Bogotá: 2026-09-15T10:00",
       parameters: {
         type: "object",
         properties: {
           servicio: { type: "string" },
           nombre: { type: "string" },
+          cuando: { type: "string" },
+          profesional: { type: "string" },
         },
         required: ["servicio"],
       },
@@ -53,13 +74,16 @@ const tools = [
     type: "function" as const,
     function: {
       name: "reprogramar_cita",
-      description: "Mueve la cita activa al siguiente hueco.",
-      parameters: { type: "object", properties: {} },
+      description: "Mueve la cita activa a otro hueco libre (cuando opcional, formato 2026-09-15T10:00).",
+      parameters: {
+        type: "object",
+        properties: { cuando: { type: "string" } },
+      },
     },
   },
 ];
 
-export async function synthesizeVoice(text: string) {
+export async function synthesizeVoiceMp3(text: string) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return null;
   const res = await fetch("https://api.openai.com/v1/audio/speech", {
@@ -79,8 +103,33 @@ export async function synthesizeVoice(text: string) {
     console.error("OpenAI TTS", res.status, await res.text());
     return null;
   }
-  const buf = Buffer.from(await res.arrayBuffer());
+  return Buffer.from(await res.arrayBuffer());
+}
+
+export async function synthesizeVoice(text: string) {
+  const buf = await synthesizeVoiceMp3(text);
+  if (!buf) return null;
   return `data:audio/mpeg;base64,${buf.toString("base64")}`;
+}
+
+export async function transcribeAudio(buf: Buffer, filename = "audio.ogg", mime = "audio/ogg") {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return null;
+  const form = new FormData();
+  form.append("file", new Blob([new Uint8Array(buf)], { type: mime }), filename);
+  form.append("model", "whisper-1");
+  form.append("language", "es");
+  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}` },
+    body: form,
+  });
+  if (!res.ok) {
+    console.error("OpenAI Whisper", res.status, await res.text());
+    return null;
+  }
+  const data = (await res.json()) as { text?: string };
+  return (data.text || "").trim() || null;
 }
 
 export async function generateReply(opts: {
@@ -105,7 +154,7 @@ export async function generateReply(opts: {
       role: "system",
       content: `Eres Sofía, recepcionista de ${opts.tenant.name}. Hablas español latino, cálida y breve (2 a 6 frases).
 Solo usas la información del negocio. Si no está en los datos, dilo y no inventes precios ni horarios.
-Puedes agendar, cancelar y reprogramar con las herramientas. El dueño no ve este chat.
+Puedes consultar disponibilidad, agendar, cancelar y reprogramar. Nunca confirmes un horario si la herramienta dice que no hay hueco. El dueño no ve este chat.
 Datos actuales del negocio:\n${knowledge}`,
     },
     ...chronological.map((m) => ({
@@ -171,6 +220,7 @@ async function runTool(
     const c = await ensureCustomer(opts.tenant.id, opts.from, args.nombre);
     return c ? `Cliente guardado: ${c.name}` : "Falta el nombre.";
   }
+  if (name === "ver_disponibilidad") return listAvailability(opts.tenant, args.servicio || "");
   if (name === "agendar") {
     return bookAppointment({
       tenant: opts.tenant,
@@ -178,9 +228,11 @@ async function runTool(
       channel: opts.channel,
       serviceHint: args.servicio || "",
       customerName: args.nombre,
+      whenHint: args.cuando,
+      staffHint: args.profesional,
     });
   }
   if (name === "cancelar_cita") return cancelAppointment(opts.tenant.id, opts.from);
-  if (name === "reprogramar_cita") return rescheduleAppointment(opts.tenant, opts.from);
+  if (name === "reprogramar_cita") return rescheduleAppointment(opts.tenant, opts.from, args.cuando);
   return "Herramienta desconocida.";
 }

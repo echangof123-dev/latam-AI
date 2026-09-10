@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { VERTICAL_LABEL } from "../modules";
+import { availableSlotsAnyStaff, fmtRange } from "../reservations";
 import { fmt } from "./booking";
 
 export async function businessKnowledge(tenantId: string, customerPhone: string) {
@@ -53,6 +54,18 @@ export async function businessKnowledge(tenantId: string, customerPhone: string)
         customer.appointments.map((a) => `${a.service.name} el ${fmt(a.startsAt)} (${a.status})`).join("; ")
       : "Sin citas activas para este teléfono.",
   ];
+
+  if (tenant.services[0]) {
+    const slots = await availableSlotsAnyStaff({
+      tenantId,
+      serviceId: tenant.services[0].id,
+      days: 5,
+    });
+    lines.push(
+      `Próximos huecos para ${tenant.services[0].name}: ` +
+        (slots.length ? slots.slice(0, 8).map((s) => fmtRange(s.start)).join("; ") : "ninguno"),
+    );
+  }
 
   return lines.filter(Boolean).join("\n");
 }

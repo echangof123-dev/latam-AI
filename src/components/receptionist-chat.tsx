@@ -140,7 +140,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
           <p className="text-xl font-semibold">Sofía</p>
           <p className="text-sm text-slate-400">Recepcionista de {bizName}</p>
           <p className="text-xs text-emerald-400 mt-1">
-            {speaking ? "Hablando…" : listening ? "Te escucho…" : "Lista · voz ChatGPT"}
+            {speaking ? "Hablando…" : listening ? "Te escucho…" : "Lista · voz y reservas"}
           </p>
         </div>
       </div>

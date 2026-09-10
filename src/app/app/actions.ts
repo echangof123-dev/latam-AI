@@ -48,10 +48,35 @@ export async function createBranch(formData: FormData) {
       tenantId,
       name,
       address,
-      hoursJson: JSON.stringify({ lun: ["09:00-18:00"], sab: ["09:00-14:00"], dom: [] }),
+      hoursJson: JSON.stringify({
+        lun: ["09:00-18:00"],
+        mar: ["09:00-18:00"],
+        mie: ["09:00-18:00"],
+        jue: ["09:00-18:00"],
+        vie: ["09:00-18:00"],
+        sab: ["09:00-14:00"],
+        dom: [],
+      }),
     },
   });
   revalidatePath("/app/sucursales");
+}
+
+export async function updateBranchHours(formData: FormData) {
+  const { tenantId } = await requireOwner();
+  const id = String(formData.get("id") || "");
+  const keys = ["lun", "mar", "mie", "jue", "vie", "sab", "dom"] as const;
+  const hours: Record<string, string[]> = {};
+  for (const k of keys) {
+    const raw = String(formData.get(k) || "").trim();
+    hours[k] = raw ? [raw] : [];
+  }
+  await prisma.branch.updateMany({
+    where: { id, tenantId },
+    data: { hoursJson: JSON.stringify(hours) },
+  });
+  revalidatePath("/app/sucursales");
+  revalidatePath("/app/agenda");
 }
 
 export async function markNotificationRead(formData: FormData) {

@@ -36,7 +36,8 @@ export default async function WhatsappGuidePage() {
       <header>
         <h1 className="font-display text-4xl">WhatsApp (Gupshup)</h1>
         <p className="text-slate-300 mt-2 text-lg">
-          Mismo tipo de servicio que Twilio, pero se crea con correo. Los mensajes llegan a WhatsApp.
+          Mensajes, notas de voz y respuesta automática de Sofía. El botón de llamada nativa de WhatsApp no lo
+          atiende Gupshup; usa el micrófono del chat (nota de audio).
         </p>
       </header>
 
@@ -91,7 +92,7 @@ export default async function WhatsappGuidePage() {
           Abre WhatsApp y escribe al <b>+91 78348 11114</b>:
         </p>
         <CopyField value={`proxy ${appName}`} />
-        <p>Debe confirmar que ya estás en el sandbox. Luego escribe: Hola.</p>
+        <p>Debe confirmar que ya estás en el sandbox. Luego escribe Hola o mándale una nota de voz: Sofía transcribe y te responde en audio.</p>
       </Step>
 
       <Step n="5" title="Guardar el número aquí">

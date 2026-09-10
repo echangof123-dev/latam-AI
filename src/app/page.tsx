@@ -24,12 +24,12 @@ export default async function Home() {
 
       <section className="max-w-6xl mx-auto px-6 py-10 grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-center">
         <div>
-          <p className="text-gold-400 text-sm font-semibold tracking-wide uppercase">ERP + recepción IA</p>
+          <p className="text-gold-400 text-sm font-semibold tracking-wide uppercase">ERP + reservas + recepción IA</p>
           <h1 className="font-display text-5xl leading-tight mt-3">
-            Una recepcionista que atiende por texto, voz y WhatsApp.
+            Agenda profesional y una recepcionista que atiende sola.
           </h1>
           <p className="mt-5 text-lg text-slate-300 max-w-xl">
-            Sofía responde al instante. El dueño solo ve reservas, pagos y avisos importantes — no el chat de todos los días.
+            Sofía responde por texto, voz y notas de audio en WhatsApp. El dueño ve el calendario, huecos y avisos — no las charlas.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/chat" className="btn-gold text-lg px-6 py-3">
@@ -40,9 +40,9 @@ export default async function Home() {
             </Link>
           </div>
           <ul className="mt-8 grid sm:grid-cols-3 gap-3 text-sm text-slate-400">
-            <li className="card py-4">Escribe o habla</li>
-            <li className="card py-4">Avatar que responde</li>
-            <li className="card py-4">WhatsApp cuando esté listo</li>
+            <li className="card py-4">Calendario y disponibilidad</li>
+            <li className="card py-4">Voz en el chat y WhatsApp</li>
+            <li className="card py-4">Reprogramar, cancelar, no-show</li>
           </ul>
         </div>
         <div className="relative">

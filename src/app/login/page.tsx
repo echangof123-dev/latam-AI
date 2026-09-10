@@ -20,9 +20,9 @@ async function LoginInner({
         <p className="font-display text-3xl text-gold-400">Eje Uno</p>
         <div>
           <img src="/sofia.png" alt="" className="h-40 w-40 rounded-full object-cover border-2 border-gold-500 mb-8" />
-          <h1 className="font-display text-5xl leading-tight max-w-md">Panel claro. Configuración en 4 pasos.</h1>
+          <h1 className="font-display text-5xl leading-tight max-w-md">Reservas, calendario y Sofía en un solo panel.</h1>
           <p className="mt-6 max-w-md text-slate-300 text-lg">
-            Primero prueba a Sofía en el chat. WhatsApp se conecta después, con copiar y pegar.
+            El dueño gestiona la agenda. Sofía atiende por chat, voz y notas de audio de WhatsApp.
           </p>
         </div>
         <Link href="/chat" className="text-gold-400 hover:underline">

@@ -22,7 +22,7 @@ body {
 input,
 select,
 textarea {
-  @apply bg-[#101827] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20;
+  @apply w-full bg-[#101827] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20;
 }
 
 label {
@@ -53,4 +53,16 @@ label {
   50% {
     box-shadow: 0 0 0 14px rgba(212, 168, 75, 0);
   }
+}
+
+.app-shell {
+  @apply min-h-screen grid lg:grid-cols-[240px_1fr];
+}
+
+.app-aside {
+  @apply border-r border-white/10 p-5 space-y-6 bg-[#0a1220]/90 backdrop-blur-md;
+}
+
+.app-main {
+  @apply p-6 lg:p-8 max-w-[1400px];
 }

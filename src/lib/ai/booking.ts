@@ -1,26 +1,9 @@
 import { prisma } from "../db";
 import type { Channel } from "@prisma/client";
-
-export function nextSlot(from = new Date(), minutes = 40) {
-  const d = new Date(from);
-  d.setMinutes(d.getMinutes() + 90, 0, 0);
-  if (d.getHours() < 9) d.setHours(9, 0, 0, 0);
-  if (d.getHours() >= 18) {
-    d.setDate(d.getDate() + 1);
-    d.setHours(10, 0, 0, 0);
-  }
-  const end = new Date(d.getTime() + minutes * 60000);
-  return { start: d, end };
-}
+import { availableSlotsAnyStaff, fmtRange, nextOpenSlot, parseWhenHint } from "../reservations";
 
 export function fmt(d: Date) {
-  return d.toLocaleString("es-CO", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return fmtRange(d);
 }
 
 export async function notify(
@@ -81,33 +64,59 @@ export async function ensureCustomer(tenantId: string, phone: string, name?: str
   return prisma.customer.create({ data: { tenantId, name, phone } });
 }
 
+export async function listAvailability(tenant: TenantBundle, serviceHint: string) {
+  const service = pickService(tenant, serviceHint);
+  if (!service) return "Aún no hay servicios cargados.";
+  const slots = await availableSlotsAnyStaff({
+    tenantId: tenant.id,
+    serviceId: service.id,
+    days: 10,
+  });
+  if (!slots.length) {
+    return `No hay huecos libres para ${service.name} en los próximos 10 días (horario de sede y profesionales ocupados).`;
+  }
+  const lines = slots.slice(0, 10).map((s) => fmt(s.start)).join("; ");
+  return `Huecos para ${service.name} (${service.durationMin} min): ${lines}.`;
+}
+
 export async function bookAppointment(opts: {
   tenant: TenantBundle;
   from: string;
   channel: Channel;
   serviceHint: string;
   customerName?: string;
+  whenHint?: string;
+  staffHint?: string;
 }) {
   const customer = await ensureCustomer(opts.tenant.id, opts.from, opts.customerName);
   if (!customer) return "Necesito el nombre del cliente para agendar.";
   const service = pickService(opts.tenant, opts.serviceHint);
   if (!service) return "Aún no hay servicios cargados.";
-  const clash = await prisma.appointment.findFirst({
-    where: {
-      tenantId: opts.tenant.id,
-      status: { in: ["CONFIRMED", "PENDING", "RESCHEDULED"] },
-      startsAt: { gte: new Date() },
-    },
-    orderBy: { startsAt: "desc" },
+  const staff = opts.staffHint
+    ? opts.tenant.staff.find((s) => opts.staffHint && s.name.toLowerCase().includes(opts.staffHint.toLowerCase()))
+    : undefined;
+  const when = parseWhenHint(opts.whenHint);
+  const slot = await nextOpenSlot({
+    tenantId: opts.tenant.id,
+    serviceId: service.id,
+    staffId: staff?.id,
+    branchId: opts.tenant.branches[0]?.id,
+    when: when || undefined,
+    durationMin: service.durationMin,
   });
-  const base = clash ? new Date(clash.endsAt) : new Date();
-  const slot = nextSlot(base, service.durationMin);
+  if (!slot) {
+    const alt = await listAvailability(opts.tenant, service.name);
+    return when
+      ? `Ese horario no está libre (fuera de jornada o ya hay una reserva con ese profesional). ${alt}`
+      : `No encontré un hueco libre. ${alt}`;
+  }
+  const staffRow = opts.tenant.staff.find((s) => s.id === slot.staffId) || opts.tenant.staff[0];
   await prisma.appointment.create({
     data: {
       tenantId: opts.tenant.id,
       customerId: customer.id,
       serviceId: service.id,
-      staffId: opts.tenant.staff[0]?.id,
+      staffId: slot.staffId || staffRow?.id,
       branchId: opts.tenant.branches[0]?.id,
       startsAt: slot.start,
       endsAt: slot.end,
@@ -122,7 +131,7 @@ export async function bookAppointment(opts: {
     `${customer.name} — ${service.name} el ${fmt(slot.start)}.`,
   );
   await bump(opts.tenant.id, "bookings");
-  return `Confirmado: ${service.name} el ${fmt(slot.start)} con ${opts.tenant.staff[0]?.name || "el equipo"} a nombre de ${customer.name}.`;
+  return `Confirmado: ${service.name} el ${fmt(slot.start)} con ${staffRow?.name || "el equipo"} a nombre de ${customer.name}.`;
 }
 
 export async function cancelAppointment(tenantId: string, from: string) {
@@ -147,7 +156,7 @@ export async function cancelAppointment(tenantId: string, from: string) {
   return `Cancelé ${appt.service.name} del ${fmt(appt.startsAt)}.`;
 }
 
-export async function rescheduleAppointment(tenant: TenantBundle, from: string) {
+export async function rescheduleAppointment(tenant: TenantBundle, from: string, whenHint?: string) {
   const customer = await prisma.customer.findUnique({
     where: { tenantId_phone: { tenantId: tenant.id, phone: from } },
   });
@@ -162,10 +171,22 @@ export async function rescheduleAppointment(tenant: TenantBundle, from: string) 
       })
     : null;
   if (!appt) return "No hay cita vigente para reprogramar.";
-  const slot = nextSlot(new Date(), appt.service.durationMin);
+  const when = parseWhenHint(whenHint);
+  const slot = await nextOpenSlot({
+    tenantId: tenant.id,
+    serviceId: appt.serviceId,
+    staffId: appt.staffId || undefined,
+    branchId: appt.branchId || undefined,
+    when: when || undefined,
+    ignoreId: appt.id,
+    durationMin: appt.service.durationMin,
+  });
+  if (!slot) {
+    return "No hay un hueco libre para mover esa cita. Prueba otro día o hora dentro del horario de la sede.";
+  }
   await prisma.appointment.update({
     where: { id: appt.id },
-    data: { startsAt: slot.start, endsAt: slot.end, status: "RESCHEDULED" },
+    data: { startsAt: slot.start, endsAt: slot.end, status: "RESCHEDULED", staffId: slot.staffId || appt.staffId },
   });
   await notify(tenant.id, "RESCHEDULED", "Cita reprogramada", `${customer?.name || from}: ${appt.service.name} ahora ${fmt(slot.start)}.`);
   return `Reprogramé ${appt.service.name} para ${fmt(slot.start)}.`;
