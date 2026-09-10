@@ -39,6 +39,23 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
     box.current?.scrollTo({ top: box.current.scrollHeight, behavior: "smooth" });
   }, [msgs]);
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  function playOpenAiVoice(src: string, fallback: string) {
+    if (typeof window === "undefined") return;
+    window.speechSynthesis?.cancel();
+    audioRef.current?.pause();
+    const audio = new Audio(src);
+    audioRef.current = audio;
+    audio.onplay = () => setSpeaking(true);
+    audio.onended = () => setSpeaking(false);
+    audio.onerror = () => {
+      setSpeaking(false);
+      speak(fallback);
+    };
+    void audio.play();
+  }
+
   function speak(phrase: string) {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
@@ -68,14 +85,18 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
       const res = await fetch("/api/channels/inbound", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, from: fromPhone, text: clean, channel }),
+        body: JSON.stringify({ to, from: fromPhone, text: clean, channel, wantAudio: true }),
       });
       const data = await res.json().catch(() => null);
       const reply =
         data?.reply ||
         (res.ok ? "No pude responder ahora." : "El servidor no respondió. Espera un minuto y reintenta.");
       setMsgs((m) => [...m, { role: "ai", text: reply }]);
-      speak(reply);
+      if (data?.audio) {
+        playOpenAiVoice(data.audio, reply);
+      } else {
+        speak(reply);
+      }
     } catch {
       setMsgs((m) => [...m, { role: "ai", text: "Hay un problema de conexión. Intenta otra vez." }]);
     } finally {
@@ -119,7 +140,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
           <p className="text-xl font-semibold">Sofía</p>
           <p className="text-sm text-slate-400">Recepcionista de {bizName}</p>
           <p className="text-xs text-emerald-400 mt-1">
-            {speaking ? "Hablando…" : listening ? "Te escucho…" : "Lista · texto y voz"}
+            {speaking ? "Hablando…" : listening ? "Te escucho…" : "Lista · voz ChatGPT"}
           </p>
         </div>
       </div>

@@ -9,6 +9,7 @@ const Body = z.object({
   from: z.string().min(5),
   text: z.string().min(1),
   channel: z.enum(["WHATSAPP", "SMS", "VOICE_CALL", "WEB"]).optional(),
+  wantAudio: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {

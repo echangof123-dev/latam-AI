@@ -25,5 +25,7 @@ services:
         sync: false
       - key: GUPSHUP_APP_NAME
         sync: false
-      - key: GUPSHUP_SOURCE
-        value: "917834811114"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_TTS_VOICE
+        value: "nova"
