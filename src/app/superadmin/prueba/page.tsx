@@ -9,7 +9,7 @@ export default async function PruebaPage() {
       <header>
         <h1 className="font-display text-4xl">Prueba de escritorio</h1>
         <p className="text-slate-300 mt-2 text-lg">
-          Escribes el mensaje aquí. El sistema recorre el mismo camino que WhatsApp y te dice dónde falla.
+          Escribes el mensaje aquí. Recorre el mismo camino que WhatsApp (ahora con Twilio) y te dice dónde falla.
         </p>
       </header>
       <div className="card text-slate-300">

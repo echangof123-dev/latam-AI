@@ -26,10 +26,9 @@ export async function POST(req: Request) {
 
   const form = await req.formData().catch(() => null);
   const tenantId = String(form?.get("tenantId") || "").trim();
-  const e164 = digitsPhone(String(form?.get("e164") || "+15556613653"));
-  const metaId = String(form?.get("metaId") || "").trim();
+  const e164 = digitsPhone(String(form?.get("e164") || "+14155238886"));
 
-  if (!tenantId || !e164 || !metaId) return fail("faltan");
+  if (!tenantId || !e164) return fail("faltan");
 
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
   if (!tenant) return fail("negocio");
@@ -37,8 +36,8 @@ export async function POST(req: Request) {
   try {
     await prisma.phoneNumber.upsert({
       where: { e164 },
-      update: { tenantId, whatsappPhoneNumberId: metaId, label: "WhatsApp Meta" },
-      create: { e164, tenantId, whatsappPhoneNumberId: metaId, label: "WhatsApp Meta" },
+      update: { tenantId, label: "WhatsApp Twilio", whatsappPhoneNumberId: "twilio" },
+      create: { e164, tenantId, label: "WhatsApp Twilio", whatsappPhoneNumberId: "twilio" },
     });
   } catch {
     return fail("bd");

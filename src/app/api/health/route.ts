@@ -8,7 +8,8 @@ export async function GET() {
     ok: true,
     app: "ejeuno",
     whatsapp: {
-      token: Boolean(process.env.WHATSAPP_ACCESS_TOKEN),
+      proveedor: "twilio",
+      token: Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
       llegoMensaje: Boolean(whatsappTrace.lastText),
       ultimo: whatsappTrace.lastHint,
       texto: whatsappTrace.lastText || null,

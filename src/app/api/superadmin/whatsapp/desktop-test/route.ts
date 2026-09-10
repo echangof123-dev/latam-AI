@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { handleInbound } from "@/lib/ai/engine";
-import { sendWhatsAppText } from "@/lib/whatsapp";
+import { sendTwilioWhatsApp, twilioFromNumber, twilioReady } from "@/lib/twilio";
 import { whatsappTrace } from "@/lib/whatsapp-trace";
 import { prisma } from "@/lib/db";
 
@@ -23,21 +23,19 @@ export async function POST(req: Request) {
   const from = String(body?.from || "").replace(/\D/g, "");
   const sendToPhone = Boolean(body?.sendToPhone);
   const steps: { n: number; title: string; ok: boolean; detail: string }[] = [];
+  const sandbox = twilioFromNumber();
 
   const phone =
-    (await prisma.phoneNumber.findFirst({
-      where: { whatsappPhoneNumberId: { not: null } },
-    })) ||
-    (await prisma.phoneNumber.findFirst({
-      where: { e164: "+15556613653" },
-    }));
+    (await prisma.phoneNumber.findUnique({ where: { e164: sandbox } })) ||
+    (await prisma.phoneNumber.findFirst({ where: { whatsappPhoneNumberId: "twilio" } })) ||
+    (await prisma.phoneNumber.findFirst({ where: { tenant: { slug: "barberia-norte" } } }));
 
   if (!phone) {
     steps.push({
       n: 1,
       title: "Número del negocio",
       ok: false,
-      detail: "No hay un WhatsApp guardado. Pulsa Guardar WhatsApp en el menú WhatsApp.",
+      detail: "Guarda el número de Twilio en el menú WhatsApp.",
     });
     return NextResponse.json({ ok: false, steps });
   }
@@ -46,7 +44,7 @@ export async function POST(req: Request) {
     n: 1,
     title: "Número del negocio",
     ok: true,
-    detail: `${phone.e164} · ID Meta ${phone.whatsappPhoneNumberId || "falta"}`,
+    detail: `${phone.e164} · Twilio sandbox ${sandbox}`,
   });
 
   try {
@@ -69,7 +67,7 @@ export async function POST(req: Request) {
       ok: false,
       detail: err instanceof Error ? err.message : "Error interno",
     });
-    return NextResponse.json({ ok: false, steps, meta: webhookStatus() });
+    return NextResponse.json({ ok: false, steps });
   }
 
   if (!sendToPhone) {
@@ -79,64 +77,46 @@ export async function POST(req: Request) {
       ok: true,
       detail: "No pediste enviarlo al celular. La IA en escritorio SÍ funciona.",
     });
-    return NextResponse.json({ ok: true, steps, meta: webhookStatus() });
+    return NextResponse.json({ ok: true, steps });
   }
 
   if (!from || from.length < 8) {
     steps.push({
       n: 3,
-      title: "Envío a WhatsApp",
+      title: "Envío a WhatsApp (Twilio)",
       ok: false,
       detail: "Escribe tu número (con código de país, ej. 5939…).",
     });
-    return NextResponse.json({ ok: false, steps, meta: webhookStatus() });
+    return NextResponse.json({ ok: false, steps });
   }
 
-  if (!phone.whatsappPhoneNumberId) {
+  if (!twilioReady()) {
     steps.push({
       n: 3,
-      title: "Envío a WhatsApp",
+      title: "Envío a WhatsApp (Twilio)",
       ok: false,
-      detail: "Falta el Phone number ID. Guárdalo en el paso 3 de WhatsApp.",
+      detail: "Faltan TWILIO_ACCOUNT_SID y TWILIO_AUTH_TOKEN en Render.",
     });
-    return NextResponse.json({ ok: false, steps, meta: webhookStatus() });
-  }
-
-  if (!process.env.WHATSAPP_ACCESS_TOKEN) {
-    steps.push({
-      n: 3,
-      title: "Envío a WhatsApp",
-      ok: false,
-      detail: "Falta WHATSAPP_ACCESS_TOKEN en Render.",
-    });
-    return NextResponse.json({ ok: false, steps, meta: webhookStatus() });
+    return NextResponse.json({ ok: false, steps });
   }
 
   const lastReply = steps.find((s) => s.n === 2)?.detail || "Hola, soy Sofía.";
-  const sent = await sendWhatsAppText(phone.whatsappPhoneNumberId, from, lastReply);
+  const sent = await sendTwilioWhatsApp(from, lastReply);
   steps.push({
     n: 3,
-    title: "Envío a WhatsApp (Meta)",
+    title: "Envío a WhatsApp (Twilio)",
     ok: sent.ok,
     detail: sent.ok
-      ? `Meta aceptó el envío a +${from}. Mira WhatsApp en el celular.`
+      ? `Twilio aceptó el envío a +${from}. Mira el chat del sandbox.`
       : sent.error,
   });
 
   steps.push({
     n: 4,
-    title: "¿Meta avisa cuando TÚ escribes?",
+    title: "¿Twilio avisa cuando TÚ escribes?",
     ok: Boolean(whatsappTrace.lastText),
-    detail: webhookStatus().ultimo,
+    detail: whatsappTrace.lastHint,
   });
 
-  return NextResponse.json({ ok: sent.ok, steps, meta: webhookStatus() });
-}
-
-function webhookStatus() {
-  return {
-    token: Boolean(process.env.WHATSAPP_ACCESS_TOKEN),
-    llegoMensaje: Boolean(whatsappTrace.lastText),
-    ultimo: whatsappTrace.lastHint,
-  };
+  return NextResponse.json({ ok: sent.ok, steps });
 }

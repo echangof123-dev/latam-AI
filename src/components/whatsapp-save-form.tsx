@@ -5,7 +5,7 @@ import { useState } from "react";
 type Tenant = { id: string; name: string };
 
 const ERRORS: Record<string, string> = {
-  faltan: "Falta el negocio, el teléfono o el código de Meta.",
+  faltan: "Falta el negocio o el número de Twilio.",
   negocio: "Ese negocio no existe. Elige otro en la lista.",
   bd: "No se pudo guardar. Revisa que el teléfono no esté repetido.",
   login: "Tu sesión caducó. Entra otra vez.",
@@ -52,7 +52,7 @@ export function WhatsappSaveForm({
     <form onSubmit={onSubmit} className="space-y-4">
       {ok ? (
         <p className="rounded-2xl border border-emerald-600 bg-emerald-950/40 px-4 py-3 text-lg text-emerald-300">
-          Guardado. Ya puedes escribir Hola al +1 (555) 661-3653.
+          Guardado. Ya puedes escribir Hola al sandbox de Twilio.
         </p>
       ) : null}
       {error ? (
@@ -69,15 +69,11 @@ export function WhatsappSaveForm({
         </select>
       </div>
       <div className="space-y-1">
-        <label>Teléfono (déjalo así)</label>
-        <input name="e164" defaultValue="+15556613653" className="w-full text-lg py-3" required />
-      </div>
-      <div className="space-y-1">
-        <label>Código largo de Meta (Phone number ID)</label>
-        <input name="metaId" defaultValue="1344096055445731" className="w-full text-lg py-3" required />
+        <label>Número sandbox de Twilio (déjalo así si es el de prueba)</label>
+        <input name="e164" defaultValue="+14155238886" className="w-full text-lg py-3" required />
       </div>
       <button type="submit" className="btn-gold w-full text-xl py-4" disabled={busy}>
-        {busy ? "Guardando…" : "Guardar WhatsApp"}
+        {busy ? "Guardando…" : "Guardar número Twilio"}
       </button>
     </form>
   );
