@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
   const form = await req.formData().catch(() => null);
   const tenantId = String(form?.get("tenantId") || "").trim();
-  const e164 = digitsPhone(String(form?.get("e164") || "+14155238886"));
+  const e164 = digitsPhone(String(form?.get("e164") || "+917834811114"));
 
   if (!tenantId || !e164) return fail("faltan");
 
@@ -36,8 +36,8 @@ export async function POST(req: Request) {
   try {
     await prisma.phoneNumber.upsert({
       where: { e164 },
-      update: { tenantId, label: "WhatsApp Twilio", whatsappPhoneNumberId: "twilio" },
-      create: { e164, tenantId, label: "WhatsApp Twilio", whatsappPhoneNumberId: "twilio" },
+      update: { tenantId, label: "WhatsApp Gupshup", whatsappPhoneNumberId: "gupshup" },
+      create: { e164, tenantId, label: "WhatsApp Gupshup", whatsappPhoneNumberId: "gupshup" },
     });
   } catch {
     return fail("bd");

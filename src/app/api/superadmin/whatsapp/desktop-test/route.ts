@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { handleInbound } from "@/lib/ai/engine";
-import { sendTwilioWhatsApp, twilioFromNumber, twilioReady } from "@/lib/twilio";
+import { sendGupshupWhatsApp, gupshupReady, gupshupSource } from "@/lib/gupshup";
 import { whatsappTrace } from "@/lib/whatsapp-trace";
 import { prisma } from "@/lib/db";
 
@@ -23,11 +23,11 @@ export async function POST(req: Request) {
   const from = String(body?.from || "").replace(/\D/g, "");
   const sendToPhone = Boolean(body?.sendToPhone);
   const steps: { n: number; title: string; ok: boolean; detail: string }[] = [];
-  const sandbox = twilioFromNumber();
+  const sandbox = `+${gupshupSource()}`;
 
   const phone =
     (await prisma.phoneNumber.findUnique({ where: { e164: sandbox } })) ||
-    (await prisma.phoneNumber.findFirst({ where: { whatsappPhoneNumberId: "twilio" } })) ||
+    (await prisma.phoneNumber.findFirst({ where: { whatsappPhoneNumberId: "gupshup" } })) ||
     (await prisma.phoneNumber.findFirst({ where: { tenant: { slug: "barberia-norte" } } }));
 
   if (!phone) {
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       n: 1,
       title: "Número del negocio",
       ok: false,
-      detail: "Guarda el número de Twilio en el menú WhatsApp.",
+      detail: "Guarda el número de Gupshup en el menú WhatsApp.",
     });
     return NextResponse.json({ ok: false, steps });
   }
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     n: 1,
     title: "Número del negocio",
     ok: true,
-    detail: `${phone.e164} · Twilio sandbox ${sandbox}`,
+    detail: `${phone.e164} · Gupshup ${sandbox}`,
   });
 
   try {
@@ -83,37 +83,37 @@ export async function POST(req: Request) {
   if (!from || from.length < 8) {
     steps.push({
       n: 3,
-      title: "Envío a WhatsApp (Twilio)",
+      title: "Envío a WhatsApp (Gupshup)",
       ok: false,
       detail: "Escribe tu número (con código de país, ej. 5939…).",
     });
     return NextResponse.json({ ok: false, steps });
   }
 
-  if (!twilioReady()) {
+  if (!gupshupReady()) {
     steps.push({
       n: 3,
-      title: "Envío a WhatsApp (Twilio)",
+      title: "Envío a WhatsApp (Gupshup)",
       ok: false,
-      detail: "Faltan TWILIO_ACCOUNT_SID y TWILIO_AUTH_TOKEN en Render.",
+      detail: "Faltan GUPSHUP_API_KEY y GUPSHUP_APP_NAME en Render.",
     });
     return NextResponse.json({ ok: false, steps });
   }
 
   const lastReply = steps.find((s) => s.n === 2)?.detail || "Hola, soy Sofía.";
-  const sent = await sendTwilioWhatsApp(from, lastReply);
+  const sent = await sendGupshupWhatsApp(from, lastReply);
   steps.push({
     n: 3,
-    title: "Envío a WhatsApp (Twilio)",
+    title: "Envío a WhatsApp (Gupshup)",
     ok: sent.ok,
     detail: sent.ok
-      ? `Twilio aceptó el envío a +${from}. Mira el chat del sandbox.`
+      ? `Gupshup aceptó el envío a +${from}. Mira el chat con +91 78348 11114.`
       : sent.error,
   });
 
   steps.push({
     n: 4,
-    title: "¿Twilio avisa cuando TÚ escribes?",
+    title: "¿Gupshup avisa cuando TÚ escribes?",
     ok: Boolean(whatsappTrace.lastText),
     detail: whatsappTrace.lastHint,
   });

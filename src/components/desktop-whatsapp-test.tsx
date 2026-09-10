@@ -41,7 +41,7 @@ export function DesktopWhatsappTest() {
         <input className="w-full text-lg py-3" value={text} onChange={(e) => setText(e.target.value)} required />
       </div>
       <div className="space-y-1">
-        <label>Tu WhatsApp (el que hizo join al sandbox)</label>
+        <label>Tu WhatsApp (el que envió proxy al +91 78348 11114)</label>
         <input
           className="w-full text-lg py-3"
           value={from}
@@ -51,7 +51,7 @@ export function DesktopWhatsappTest() {
       </div>
       <label className="flex items-center gap-2 text-slate-200">
         <input type="checkbox" checked={sendToPhone} onChange={(e) => setSendToPhone(e.target.checked)} />
-          Enviar también la respuesta a mi WhatsApp (sandbox Twilio)
+          Enviar también la respuesta a mi WhatsApp (Gupshup)
       </label>
       <button type="submit" className="btn-gold w-full text-xl py-4" disabled={busy}>
         {busy ? "Probando…" : "Probar desde aquí"}

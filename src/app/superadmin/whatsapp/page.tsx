@@ -4,7 +4,7 @@ import { requireSuperadmin } from "@/lib/guards";
 import { CopyField } from "@/components/copy-field";
 import { WhatsappSaveForm } from "@/components/whatsapp-save-form";
 import { whatsappTrace } from "@/lib/whatsapp-trace";
-import { twilioReady } from "@/lib/twilio";
+import { gupshupReady } from "@/lib/gupshup";
 
 function Step({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (
@@ -25,17 +25,18 @@ export default async function WhatsappGuidePage() {
   const h = await headers();
   const host = h.get("x-forwarded-host") || h.get("host") || "ejeuno.onrender.com";
   const proto = h.get("x-forwarded-proto") || "https";
-  const webhook = `${proto}://${host.split(",")[0].trim()}/api/channels/twilio/whatsapp`;
-  const ready = twilioReady();
+  const webhook = `${proto}://${host.split(",")[0].trim()}/api/channels/gupshup/whatsapp`;
+  const ready = gupshupReady();
   const tenants = await prisma.tenant.findMany({ orderBy: { name: "asc" } });
   const barber = tenants.find((t) => t.slug === "barberia-norte") || tenants[0];
+  const appName = process.env.GUPSHUP_APP_NAME || "EjeUno";
 
   return (
     <div className="max-w-3xl space-y-6">
       <header>
-        <h1 className="font-display text-4xl">WhatsApp (Twilio)</h1>
+        <h1 className="font-display text-4xl">WhatsApp (Gupshup)</h1>
         <p className="text-slate-300 mt-2 text-lg">
-          Dejamos Facebook. Twilio es más simple: cuenta, sandbox y un webhook.
+          Mismo tipo de servicio que Twilio, pero se crea con correo. Los mensajes llegan a WhatsApp.
         </p>
       </header>
 
@@ -52,62 +53,49 @@ export default async function WhatsappGuidePage() {
         ) : null}
       </div>
 
-      <Step n="1" title="Cuenta Twilio y claves en Render">
+      <Step n="1" title="Crear cuenta Gupshup">
         <ol className="list-decimal pl-6 space-y-2">
           <li>
-            Crea cuenta en{" "}
-            <a className="text-gold-400 underline" href="https://www.twilio.com/try-twilio" target="_blank" rel="noreferrer">
-              twilio.com/try-twilio
-            </a>
+            Entra a{" "}
+            <a className="text-gold-400 underline" href="https://www.gupshup.io/" target="_blank" rel="noreferrer">
+              gupshup.io
+            </a>{" "}
+            y regístrate con <b>correo</b> (no pide el SMS de Ecuador de Twilio).
           </li>
-          <li>En la consola, copia <b>Account SID</b> y <b>Auth Token</b>.</li>
-          <li>
-            Render → ejeuno → Environment. Añade:
-            <CopyField value="TWILIO_ACCOUNT_SID" />
-            <CopyField value="TWILIO_AUTH_TOKEN" />
-            <CopyField value="TWILIO_WHATSAPP_FROM" />
-            Value del último, si usas sandbox: <b>+14155238886</b>
-          </li>
-          <li>Save Changes y espera el deploy.</li>
+          <li>Crea una app de WhatsApp (Access / sandbox).</li>
+          <li>Copia el <b>API key</b> y el <b>nombre de la app</b> (sin espacios raros).</li>
         </ol>
+      </Step>
+
+      <Step n="2" title="Pegar claves en Render">
+        <p>Render → ejeuno → Environment:</p>
+        <CopyField value="GUPSHUP_API_KEY" />
+        <CopyField value="GUPSHUP_APP_NAME" />
+        <CopyField value="GUPSHUP_SOURCE" />
+        <p>
+          El SOURCE, si usas sandbox, es <b>917834811114</b> (sin +).
+        </p>
+        <p>Save Changes y espera el deploy.</p>
         <p className={ready ? "text-emerald-400 font-medium" : "text-amber-400 font-medium"}>
-          {ready ? "Bien: Twilio ya está en el servidor." : "Faltan las claves de Twilio en Render."}
+          {ready ? "Bien: Gupshup ya está en el servidor." : "Faltan las claves de Gupshup en Render."}
         </p>
       </Step>
 
-      <Step n="2" title="Avisar a Twilio (webhook)">
-        <p>
-          En Twilio: Messaging → Try it out →{" "}
-          <a
-            className="text-gold-400 underline"
-            href="https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn"
-            target="_blank"
-            rel="noreferrer"
-          >
-            WhatsApp sandbox
-          </a>
-          .
-        </p>
-        <p>En “When a message comes in”, pega esta URL (método HTTP POST):</p>
+      <Step n="3" title="Avisar a Gupshup (callback)">
+        <p>En la app de Gupshup, pega esta URL de callback / webhook:</p>
         <CopyField value={webhook} />
-        <p>Guarda. No hay token de verificación tipo Facebook.</p>
       </Step>
 
-      <Step n="3" title="Unir tu celular al sandbox">
+      <Step n="4" title="Unir tu WhatsApp">
         <p>
-          Abre WhatsApp. Escribe al <b>+1 415 523 8886</b> el código que Twilio muestra (algo como{" "}
-          <b>join xxx-xxxx</b>).
+          Abre WhatsApp y escribe al <b>+91 78348 11114</b>:
         </p>
-        <p>Twilio debe responder que ya estás unido. Sin ese join, no llega ningún Hola.</p>
+        <CopyField value={`proxy ${appName}`} />
+        <p>Debe confirmar que ya estás en el sandbox. Luego escribe: Hola.</p>
       </Step>
 
-      <Step n="4" title="Guardar el número aquí">
+      <Step n="5" title="Guardar el número aquí">
         <WhatsappSaveForm tenants={tenants.map((t) => ({ id: t.id, name: t.name }))} defaultTenantId={barber?.id} />
-      </Step>
-
-      <Step n="5" title="Escribe Hola">
-        <p>En el mismo chat del sandbox, escribe: Hola.</p>
-        <p>Sofía debe contestar. También puedes usar Prueba de escritorio.</p>
       </Step>
     </div>
   );

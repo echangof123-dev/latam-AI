@@ -21,9 +21,9 @@ services:
           property: connectionString
       - key: AUTH_SECRET
         generateValue: true
-      - key: TWILIO_ACCOUNT_SID
+      - key: GUPSHUP_API_KEY
         sync: false
-      - key: TWILIO_AUTH_TOKEN
+      - key: GUPSHUP_APP_NAME
         sync: false
-      - key: TWILIO_WHATSAPP_FROM
-        value: "+14155238886"
+      - key: GUPSHUP_SOURCE
+        value: "917834811114"
