@@ -15,6 +15,7 @@ export default async function SuperadminLayout({ children }: { children: React.R
         </div>
         <nav className="space-y-1">
           <NavLink href="/chat">Hablar con Sofía</NavLink>
+          <NavLink href="/superadmin/prueba">Prueba de escritorio</NavLink>
           <NavLink href="/superadmin">Negocios</NavLink>
           <NavLink href="/superadmin/canal">Probar IA</NavLink>
           <NavLink href="/superadmin/whatsapp">WhatsApp</NavLink>

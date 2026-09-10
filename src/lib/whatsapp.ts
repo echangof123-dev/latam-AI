@@ -36,14 +36,14 @@ export async function sendWhatsAppText(
   to: string,
   body: string,
   contextId?: string,
-) {
+): Promise<{ ok: boolean; error: string }> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   if (!token || !phoneNumberId) {
     const err = "Falta WHATSAPP_ACCESS_TOKEN o el ID del número";
     whatsappTrace.lastSendOk = false;
     whatsappTrace.lastSendError = err;
     console.error("WhatsApp:", err);
-    return false;
+    return { ok: false, error: err };
   }
   const payload: Record<string, unknown> = {
     messaging_product: "whatsapp",
@@ -67,11 +67,25 @@ export async function sendWhatsAppText(
     whatsappTrace.lastSendOk = false;
     whatsappTrace.lastSendError = `${res.status} ${raw.slice(0, 400)}`;
     console.error("WhatsApp send error", res.status, raw);
-    return false;
+    return { ok: false, error: explainGraphError(res.status, raw) };
   }
   whatsappTrace.lastSendOk = true;
   whatsappTrace.lastSendError = "";
-  return true;
+  return { ok: true, error: "" };
+}
+
+function explainGraphError(status: number, raw: string) {
+  const t = raw.toLowerCase();
+  if (t.includes("131030") || t.includes("not in allowed")) {
+    return "Ese WhatsApp no está en la lista de prueba de Meta (números permitidos).";
+  }
+  if (t.includes("190") || t.includes("session") || t.includes("expired")) {
+    return "El token de Meta ya no sirve. Genera uno nuevo y pégalo en Render.";
+  }
+  if (t.includes("100") && t.includes("phone")) {
+    return "El ID del número de Meta no coincide.";
+  }
+  return `Meta rechazó el envío (${status}).`;
 }
 
 async function transcribeAudio(mediaId: string) {
@@ -164,10 +178,10 @@ export async function handleWhatsAppWebhook(payload: unknown) {
         }
         whatsappTrace.lastReply = reply;
         if (replyId) {
-          const ok = await sendWhatsAppText(replyId, msg.from, reply);
-          whatsappTrace.lastHint = ok
+          const sent = await sendWhatsAppText(replyId, msg.from, reply);
+          whatsappTrace.lastHint = sent.ok
             ? "Ya contesté por WhatsApp."
-            : "Recibí el mensaje pero Meta no dejó enviar la respuesta. Revisa el token.";
+            : `Recibí el mensaje pero no pude enviar: ${sent.error}`;
         } else {
           whatsappTrace.lastSendOk = false;
           whatsappTrace.lastSendError = "No hay Phone number ID para responder.";
