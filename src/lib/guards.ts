@@ -22,6 +22,12 @@ export async function requireOwner(): Promise<Session & { tenantId: string }> {
   return session as Session & { tenantId: string };
 }
 
+export async function requireOwnerApi(): Promise<(Session & { tenantId: string }) | null> {
+  const session = await getSession();
+  if (!session || session.role === "SUPERADMIN" || !session.tenantId) return null;
+  return session as Session & { tenantId: string };
+}
+
 export async function requireModule(key: string) {
   const session = await requireOwner();
   const tenant = await prisma.tenant.findUnique({

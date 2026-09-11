@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireOwner } from "@/lib/guards";
 import { money } from "@/lib/auth";
 import { markNotificationRead } from "./actions";
+import Link from "next/link";
 
 export default async function OwnerHome() {
   const { tenantId } = await requireOwner();
@@ -29,8 +30,12 @@ export default async function OwnerHome() {
       <header>
         <h1 className="font-display text-4xl">{tenant.name}</h1>
         <p className="text-slate-400 mt-2">
-          Aquí solo ves lo importante: reservas, pagos y resúmenes. Las charlas las atiende Sofía.
+          Aquí ves reservas, pagos y resúmenes. Pregúntale a Elena cualquier dato de este CRM. Sofía
+          atiende a los clientes.
         </p>
+        <Link href="/app/asistente" className="btn-gold inline-block mt-4">
+          Preguntar a Elena
+        </Link>
       </header>
       <div className="grid sm:grid-cols-3 gap-4">
         <div className="card">

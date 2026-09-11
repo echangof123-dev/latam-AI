@@ -39,6 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <nav className="space-y-0.5">
           <NavLink href="/chat">Hablar con Sofía</NavLink>
           <NavLink href="/app">Inicio {unread ? `(${unread})` : ""}</NavLink>
+          <NavLink href="/app/asistente">Asistente del negocio</NavLink>
           <NavLink href="/app/parametros">Parametrización</NavLink>
           {MODULE_CATALOG.filter((m) => moduleOn(tenant.modules, m.key) && HREF[m.key]).map((m) => (
             <NavLink key={m.key} href={HREF[m.key]}>

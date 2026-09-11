@@ -14,12 +14,15 @@ export default async function IaPage() {
     <div className="space-y-6 max-w-3xl">
       <h1 className="font-display text-4xl">Atención IA</h1>
       <p className="text-slate-400">
-        Sofía atiende por chat, voz y WhatsApp (texto y notas de audio). Aquí no ves las charlas: solo
-        reservas y resultados.
+        Sofía atiende a tus clientes por chat, voz y WhatsApp. Elena es tu asistente interno: le
+        preguntas al CRM de este negocio (citas, clientes, ventas) sin ver las charlas de Sofía.
       </p>
       <div className="flex flex-wrap gap-3">
-        <Link href="/chat" className="btn-gold inline-block">
-          Hablar con Sofía ahora
+        <Link href="/app/asistente" className="btn-gold inline-block">
+          Asistente del negocio
+        </Link>
+        <Link href="/chat" className="btn-ghost inline-block">
+          Probar a Sofía (clientes)
         </Link>
         <Link href="/app/parametros" className="btn-ghost inline-block">
           Parametrizar horario
