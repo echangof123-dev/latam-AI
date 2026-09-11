@@ -1,6 +1,6 @@
 import { prisma } from "../db";
 import { VERTICAL_LABEL } from "../modules";
-import { availableSlotsAnyStaff, fmtRange } from "../reservations";
+import { availableSlotsAnyStaff, fmtRange, formatHoursHuman } from "../reservations";
 import { fmt } from "./booking";
 
 export async function businessKnowledge(tenantId: string, customerPhone: string) {
@@ -17,12 +17,21 @@ export async function businessKnowledge(tenantId: string, customerPhone: string)
   });
   if (!tenant) return "";
 
+  const now = new Date().toLocaleString("es-CO", {
+    timeZone: tenant.timezone || "America/Bogota",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   const customer = await prisma.customer.findUnique({
     where: { tenantId_phone: { tenantId, phone: customerPhone } },
     include: {
       appointments: {
         where: { status: { in: ["CONFIRMED", "PENDING", "RESCHEDULED"] } },
-        include: { service: true },
+        include: { service: true, staff: true },
         orderBy: { startsAt: "asc" },
         take: 5,
       },
@@ -30,40 +39,44 @@ export async function businessKnowledge(tenantId: string, customerPhone: string)
   });
 
   const lines = [
-    `Negocio: ${tenant.name}`,
+    `Trabajas SOLO para este negocio: ${tenant.name}.`,
+    `Ahora mismo: ${now} (${tenant.timezone}).`,
     `Rubro: ${VERTICAL_LABEL[tenant.vertical] || tenant.vertical}`,
-    `Zona horaria: ${tenant.timezone}`,
     `Teléfonos: ${tenant.phones.map((p) => `${p.e164} (${p.label})`).join("; ") || "—"}`,
-    "Sucursales:",
-    ...tenant.branches.map((b) => `- ${b.name}, ${b.address}. Horario: ${b.hoursJson}`),
-    "Servicios y precios (COP):",
-    ...tenant.services.map(
-      (s) => `- ${s.name}: $${s.priceCents.toLocaleString("es-CO")} · ${s.durationMin} min · id:${s.id}`,
+    "Sucursales y horarios de atención:",
+    ...tenant.branches.map(
+      (b) => `- ${b.name}, ${b.address}. ${formatHoursHuman(b.hoursJson)}`,
     ),
-    "Equipo:",
+    "Servicios, duración y precios en pesos colombianos:",
+    ...tenant.services.map(
+      (s) => `- ${s.name}: $${s.priceCents.toLocaleString("es-CO")} · ${s.durationMin} minutos`,
+    ),
+    "Equipo que atiende:",
     ...tenant.staff.map((s) => `- ${s.name} (${s.roleTitle})`),
     "Políticas:",
     ...tenant.policies.map((p) => `- ${p.key}: ${p.value}`),
-    tenant.inventory.length ? "Inventario:" : "",
-    ...tenant.inventory.slice(0, 30).map((i) => `- ${i.name} (${i.sku}): ${i.qty} uds`),
+    tenant.inventory.length ? "Inventario (si preguntan):" : "",
+    ...tenant.inventory.slice(0, 20).map((i) => `- ${i.name}: ${i.qty} uds`),
     customer
-      ? `Cliente conocido: ${customer.name}, tel ${customer.phone}${customer.notes ? `, notas: ${customer.notes}` : ""}`
-      : "Este teléfono aún no está en la ficha de clientes.",
+      ? `Cliente de este chat: ${customer.name}, ${customer.phone}${customer.notes ? `. Notas: ${customer.notes}` : ""}`
+      : "Aún no tienes el nombre de esta persona.",
     customer?.appointments.length
-      ? "Citas activas: " +
-        customer.appointments.map((a) => `${a.service.name} el ${fmt(a.startsAt)} (${a.status})`).join("; ")
-      : "Sin citas activas para este teléfono.",
+      ? "Citas vigentes de esta persona: " +
+        customer.appointments
+          .map((a) => `${a.service.name} el ${fmt(a.startsAt)} con ${a.staff?.name || "el equipo"}`)
+          .join("; ")
+      : "Esta persona no tiene cita vigente.",
   ];
 
-  if (tenant.services[0]) {
+  for (const s of tenant.services.slice(0, 4)) {
     const slots = await availableSlotsAnyStaff({
       tenantId,
-      serviceId: tenant.services[0].id,
+      serviceId: s.id,
       days: 5,
     });
     lines.push(
-      `Próximos huecos para ${tenant.services[0].name}: ` +
-        (slots.length ? slots.slice(0, 8).map((s) => fmtRange(s.start)).join("; ") : "ninguno"),
+      `Huecos próximos para ${s.name}: ` +
+        (slots.length ? slots.slice(0, 6).map((x) => fmtRange(x.start)).join("; ") : "sin huecos"),
     );
   }
 

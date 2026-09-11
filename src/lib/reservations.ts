@@ -12,6 +12,25 @@ export const STATUS_LABEL: Record<string, string> = {
 
 export type HoursMap = Record<string, string[]>;
 
+export function formatHoursHuman(hoursJson: string) {
+  const hours = parseHours(hoursJson);
+  const names: Record<string, string> = {
+    lun: "Lunes",
+    mar: "Martes",
+    mie: "Miércoles",
+    jue: "Jueves",
+    vie: "Viernes",
+    sab: "Sábado",
+    dom: "Domingo",
+  };
+  return (["lun", "mar", "mie", "jue", "vie", "sab", "dom"] as const)
+    .map((k) => {
+      const w = hours[k] || [];
+      return `${names[k]}: ${w.length ? w.join(" y ") : "cerrado"}`;
+    })
+    .join("; ");
+}
+
 export function parseHours(hoursJson: string): HoursMap {
   try {
     const raw = JSON.parse(hoursJson) as HoursMap;

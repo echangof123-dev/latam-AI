@@ -28,7 +28,7 @@ export default async function ChatPage() {
           <p className="text-gold-400 font-semibold">Eje Uno</p>
           <h1 className="font-display text-4xl mt-1">Habla con Sofía</h1>
           <p className="text-slate-400 mt-2">
-            IA generativa: precios, horarios y reservas con los datos del negocio.
+            IA generativa con voz: usa los datos reales de cada negocio.
           </p>
         </div>
         <Link href="/login" className="btn-ghost text-sm">

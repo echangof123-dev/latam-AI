@@ -10,6 +10,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const [fromPhone] = useState(() => {
     if (typeof window === "undefined") return "+573100000001";
     const key = "ejeuno_web_phone";
@@ -27,6 +28,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
   ]);
   const box = useRef<HTMLDivElement>(null);
   const recRef = useRef<{ start: () => void; stop: () => void } | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const bizName = useMemo(
     () => businesses.find((b) => b.phone === to)?.name || "el negocio",
@@ -34,8 +36,41 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
   );
 
   useEffect(() => {
+    setMsgs([
+      {
+        role: "ai",
+        text: `Hola, soy Sofía, de ${bizName}. Dime en qué te ayudo.`,
+      },
+    ]);
+  }, [to, bizName]);
+
+  useEffect(() => {
     box.current?.scrollTo({ top: box.current.scrollHeight, behavior: "smooth" });
   }, [msgs]);
+
+  async function speakHuman(phrase: string) {
+    audioRef.current?.pause();
+    try {
+      const res = await fetch("/api/channels/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: phrase }),
+      });
+      const data = await res.json().catch(() => null);
+      if (data?.audio) {
+        const audio = new Audio(data.audio);
+        audioRef.current = audio;
+        audio.onplay = () => setSpeaking(true);
+        audio.onended = () => setSpeaking(false);
+        audio.onerror = () => setSpeaking(false);
+        await audio.play();
+        return;
+      }
+    } catch {
+      /* texto ya está en pantalla */
+    }
+    setSpeaking(false);
+  }
 
   async function send(raw: string) {
     const clean = raw.trim();
@@ -58,6 +93,9 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
         data?.reply ||
         (res.ok ? "No pude responder ahora." : "El servidor no respondió. Espera un minuto y reintenta.");
       setMsgs((m) => [...m, { role: "ai", text: reply }]);
+      setBusy(false);
+      void speakHuman(reply);
+      return;
     } catch {
       setMsgs((m) => [...m, { role: "ai", text: "Hay un problema de conexión. Intenta otra vez." }]);
     } finally {
@@ -96,7 +134,9 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
       <div className="px-6 py-5 border-b border-white/10">
         <p className="text-xl font-semibold">Sofía</p>
         <p className="text-sm text-slate-400">Recepcionista IA de {bizName}</p>
-        <p className="text-xs text-emerald-400 mt-1">{busy ? "Pensando…" : listening ? "Te escucho…" : "En línea"}</p>
+        <p className="text-xs text-emerald-400 mt-1">
+          {speaking ? "Hablando…" : busy ? "Pensando…" : listening ? "Te escucho…" : "En línea"}
+        </p>
       </div>
 
       {businesses.length > 1 ? (

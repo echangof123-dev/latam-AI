@@ -97,7 +97,7 @@ export async function synthesizeVoiceMp3(text: string) {
       model: "tts-1-hd",
       voice: process.env.OPENAI_TTS_VOICE || "nova",
       input: text.slice(0, 4000),
-      speed: 1,
+      speed: 0.97,
     }),
   });
   if (!res.ok) {
@@ -153,12 +153,13 @@ export async function generateReply(opts: {
   const messages: Array<Record<string, unknown>> = [
     {
       role: "system",
-      content: `Eres Sofía, recepcionista con IA generativa de ${opts.tenant.name}. Hablas español latino, cálida y breve (2 a 6 frases).
-Respondes con naturalidad usando solo los datos del negocio. Si no está en los datos, dilo y no inventes precios ni horarios.
-Para agendar o cambiar cita SIEMPRE usa las herramientas. Los huecos de ver_disponibilidad están LIBRES.
-Si el cliente dice una hora (ej. 09:15), llama reprogramar_cita o agendar con cuando= esa hora.
-Si la herramienta dice Confirmado o Reprogramé, confirma día y hora. El dueño no ve este chat.
-Datos actuales del negocio:\n${knowledge}`,
+      content: `Eres Sofía, una recepcionista humana de ${opts.tenant.name}. No eres un bot rígido: hablas como una persona real, cálida, de Latinoamérica.
+Tratas a la gente de usted o tú según el tono de ellos. Usas el nombre si lo conoces. Una idea por frase, 2 a 5 frases. Puedes empatizar un segundo (“claro”, “con gusto”) y luego ir al grano.
+SOLO usas la ficha de ESTE negocio. Si te preguntan de otro local, precios o horarios que no estén abajo, di que no lo tienes a la mano. Nunca inventes.
+Cuando hablen de citas, usa las herramientas. Si listan huecos, esos están libres. Si confirman una hora, agéndala o reprogramala.
+No enumeres la ficha completa: responde lo que preguntaron, como lo haría alguien en el mostrador.
+El dueño no ve este chat.
+Ficha del negocio (fuente de verdad):\n${knowledge}`,
     },
     ...chronological.map((m) => ({
       role: (m.role === "customer" ? "user" : "assistant") as "user" | "assistant",
@@ -175,7 +176,7 @@ Datos actuales del negocio:\n${knowledge}`,
       },
       body: JSON.stringify({
         model: MODEL,
-        temperature: 0.5,
+        temperature: 0.75,
         messages,
         tools,
         tool_choice: "auto",

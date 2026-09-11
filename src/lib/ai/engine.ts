@@ -96,9 +96,9 @@ async function decide(opts: {
   }
 
   if (/h+o+l+[ao]|hoka|holi|buenas|buenos d[ií]as|buenas tardes|\bhi\b|\bhey\b/.test(low) && low.length < 50) {
-    const who = customer ? `Hola ${customer.name.split(" ")[0]}.` : "Hola.";
+    const who = customer ? `Hola ${customer.name.split(" ")[0]}, qué gusto.` : "Hola, con gusto te atiendo.";
     const list = tenant.services.map((s) => s.name).join(", ");
-    return `${who} ${greeting} ¿En qué te ayudo? Puedo agendar, cambiar o cancelar. Servicios: ${list}.`;
+    return `${who} Soy Sofía, de ${tenant.name}. Puedo ayudarte con ${list || "lo que ofrezcamos"}. ¿Qué necesitas?`;
   }
 
   if (/horario|abren|cierran/.test(low)) {
