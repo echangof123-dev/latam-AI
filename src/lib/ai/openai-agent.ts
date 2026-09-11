@@ -50,10 +50,17 @@ const tools = [
     type: "function" as const,
     function: {
       name: "ver_disponibilidad",
-      description: "Lista huecos libres según horario de sede y citas ya ocupadas en el CRM.",
+      description:
+        "Lista huecos libres según horario de sede y citas ya ocupadas en el CRM. Si el cliente pide un día concreto (ej. 16 de septiembre), pásalo en cuando para no inventar que está cerrado.",
       parameters: {
         type: "object",
-        properties: { servicio: { type: "string" } },
+        properties: {
+          servicio: { type: "string" },
+          cuando: {
+            type: "string",
+            description: "Fecha u hora pedida, ej. 16 de septiembre, 2026-09-16, viernes, 10:00",
+          },
+        },
         required: ["servicio"],
       },
     },
@@ -63,7 +70,7 @@ const tools = [
     function: {
       name: "agendar",
       description:
-        "Crea una reserva en un hueco libre. cuando puede ser 09:15 o 2026-09-11T09:15 (Bogotá). Si el cliente elige un hueco que listaste, usa ese cuando y confirma solo si la herramienta dice Confirmado.",
+        "Crea una reserva en un hueco libre. cuando puede ser 16 de septiembre, 2026-09-16, 2026-09-16T10:00 o 09:15 (Bogotá). Si el cliente elige un hueco que listaste, usa ese cuando y confirma solo si la herramienta dice Confirmado.",
       parameters: {
         type: "object",
         properties: {
@@ -185,6 +192,8 @@ export async function generateReply(opts: {
         content: `Eres Sofía, una recepcionista humana de ${opts.tenant.name}. No eres un bot rígido: hablas como una persona real, cálida, de Latinoamérica.
 Tratas a la gente de usted o tú según el tono de ellos. Usas el nombre si lo conoces. Una idea por frase, 2 a 5 frases. Puedes empatizar un segundo (“claro”, “con gusto”) y luego ir al grano.
 SOLO usas la ficha CRM de ESTE negocio (horarios, intervalo, servicios, clientes y citas ya agendadas). Nunca pises una cita ocupada: usa ver_disponibilidad y consultar_crm.
+Cerrado SOLO si el calendario o ver_disponibilidad dicen CERRADO. “Sin reservas” o un día vacío en la agenda significa LIBRE, no cerrado. Nunca digas que un miércoles u otra fecha está cerrada si el calendario marca ABIERTO.
+Si piden un día concreto, llama ver_disponibilidad con cuando=esa fecha (ej. 16 de septiembre) y responde con ese resultado. No ofrezcas otro día como si el pedido estuviera cerrado.
 Si te preguntan de otro local o un dato que no esté en el CRM, di que no lo tienes. Nunca inventes.
 Cuando hablen de citas, usa las herramientas. Si listan huecos, esos están libres. Si confirman una hora, agéndala o reprogramala.
 No enumeres la ficha completa: responde lo que preguntaron, como lo haría alguien en el mostrador.
@@ -296,7 +305,9 @@ async function runTool(
       )
       .join(" | ");
   }
-  if (name === "ver_disponibilidad") return listAvailability(opts.tenant, args.servicio || "");
+  if (name === "ver_disponibilidad") {
+    return listAvailability(opts.tenant, args.servicio || "", args.cuando || args.fecha);
+  }
   if (name === "agendar") {
     return bookAppointment({
       tenant: opts.tenant,

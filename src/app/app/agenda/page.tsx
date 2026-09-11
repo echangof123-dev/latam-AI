@@ -65,7 +65,7 @@ export default async function AgendaPage({
       tenantId,
       serviceId: services[0].id,
       branchId: branches[0]?.id,
-      days: 7,
+    days: 16,
     }));
 
   const days = DAY_TITLE.map((title, i) => {

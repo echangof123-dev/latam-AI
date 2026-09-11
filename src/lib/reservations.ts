@@ -31,13 +31,68 @@ export function formatHoursHuman(hoursJson: string) {
     .join("; ");
 }
 
+const DAY_ALIAS: Record<string, (typeof WEEK)[number]> = {
+  lun: "lun",
+  lunes: "lun",
+  mon: "lun",
+  monday: "lun",
+  mar: "mar",
+  martes: "mar",
+  tue: "mar",
+  tuesday: "mar",
+  mie: "mie",
+  mié: "mie",
+  miercoles: "mie",
+  miércoles: "mie",
+  wed: "mie",
+  wednesday: "mie",
+  jue: "jue",
+  jueves: "jue",
+  thu: "jue",
+  thursday: "jue",
+  vie: "vie",
+  viernes: "vie",
+  fri: "vie",
+  friday: "vie",
+  sab: "sab",
+  sabado: "sab",
+  sábado: "sab",
+  sat: "sab",
+  saturday: "sab",
+  dom: "dom",
+  domingo: "dom",
+  sun: "dom",
+  sunday: "dom",
+};
+
+function asWindows(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(asWindows);
+  if (typeof value !== "string") return [];
+  return value
+    .split(/[,;]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export function parseHours(hoursJson: string): HoursMap {
+  const empty: HoursMap = { lun: [], mar: [], mie: [], jue: [], vie: [], sab: [], dom: [] };
   try {
-    const raw = JSON.parse(hoursJson) as HoursMap;
-    return raw && typeof raw === "object" ? raw : defaultHours();
+    const raw = JSON.parse(hoursJson) as Record<string, unknown>;
+    if (!raw || typeof raw !== "object") return defaultHours();
+    const out: HoursMap = { ...empty };
+    for (const [k, v] of Object.entries(raw)) {
+      const key = DAY_ALIAS[k.toLowerCase().trim()];
+      if (!key) continue;
+      out[key] = asWindows(v);
+    }
+    return out;
   } catch {
     return defaultHours();
   }
+}
+
+export function windowsForYmd(hours: HoursMap, ymd: string) {
+  return hours[weekKeyFromYmd(ymd)] || [];
 }
 
 function defaultHours(): HoursMap {
@@ -75,9 +130,41 @@ export function bogotaParts(d: Date) {
   };
 }
 
-function weekKeyFromYmd(ymd: string) {
+export function weekKeyFromYmd(ymd: string) {
   const d = new Date(`${ymd}T12:00:00-05:00`);
   return WEEK[d.getUTCDay()];
+}
+
+export function humanYmd(ymd: string) {
+  return new Date(`${ymd}T12:00:00-05:00`).toLocaleDateString("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Bogota",
+  });
+}
+
+export function upcomingCalendar(hoursJson: string, days = 14) {
+  const hours = parseHours(hoursJson);
+  const names: Record<string, string> = {
+    lun: "lunes",
+    mar: "martes",
+    mie: "miércoles",
+    jue: "jueves",
+    vie: "viernes",
+    sab: "sábado",
+    dom: "domingo",
+  };
+  let ymd = bogotaParts(new Date()).ymd;
+  const lines: string[] = [];
+  for (let i = 0; i < days; i++) {
+    const key = weekKeyFromYmd(ymd);
+    const w = hours[key] || [];
+    lines.push(`${ymd} ${names[key]}: ${w.length ? `ABIERTO ${w.join(" y ")}` : "CERRADO"}`);
+    ymd = addDaysYmd(ymd, 1);
+  }
+  return lines.join("; ");
 }
 
 /** Interpreta datetime-local como hora de Bogotá (UTC-5). */
@@ -184,7 +271,7 @@ export async function availableSlots(opts: {
     select: { slotMin: true },
   });
   const stepMin = Math.max(5, branch?.slotMin || tenant?.slotMin || 15);
-  const days = Math.min(opts.days || 14, 21);
+  const days = Math.min(Math.max(opts.days || 14, 1), 42);
   const from = new Date();
   const to = new Date(from.getTime() + days * 86400000);
   const busyRaw = await loadBusy(opts.tenantId, from, to, opts.staffId);
@@ -205,7 +292,7 @@ export async function availableSlots(opts: {
     );
     ymd = addDaysYmd(ymd, 1);
   }
-  return slots.slice(0, 40);
+  return slots;
 }
 
 export async function availableSlotsAnyStaff(opts: {
@@ -224,7 +311,7 @@ export async function availableSlotsAnyStaff(opts: {
     const slots = await availableSlots({ ...opts, staffId: s.id });
     for (const slot of slots) map.set(slot.start.getTime(), slot);
   }
-  return [...map.values()].sort((a, b) => a.start.getTime() - b.start.getTime()).slice(0, 40);
+  return [...map.values()].sort((a, b) => a.start.getTime() - b.start.getTime());
 }
 
 export async function nextOpenSlot(opts: {
@@ -233,6 +320,8 @@ export async function nextOpenSlot(opts: {
   staffId?: string;
   branchId?: string;
   when?: Date;
+  hasDate?: boolean;
+  hasTime?: boolean;
   ignoreId?: string;
   durationMin: number;
   preferStaffId?: string | null;
@@ -248,6 +337,10 @@ export async function nextOpenSlot(opts: {
       ? staffRows
       : [{ id: undefined as string | undefined }];
 
+  const spanDays = opts.hasDate && opts.when
+    ? Math.min(42, Math.max(14, daysUntil(bogotaParts(opts.when).ymd) + 2))
+    : 16;
+
   const collected: { start: Date; end: Date; staffId: string | null }[] = [];
   for (const s of ordered) {
     const slots = await availableSlots({
@@ -256,6 +349,7 @@ export async function nextOpenSlot(opts: {
       staffId: s.id,
       branchId: opts.branchId,
       ignoreId: opts.ignoreId,
+      days: spanDays,
     });
     for (const slot of slots) {
       collected.push({ start: slot.start, end: slot.end, staffId: s.id || null });
@@ -267,20 +361,35 @@ export async function nextOpenSlot(opts: {
 
   const want = bogotaParts(opts.when);
   const wantMin = want.hour * 60 + want.minute;
+  const sameDay = collected.filter((s) => bogotaParts(s.start).ymd === want.ymd);
+
+  if (opts.hasDate && !opts.hasTime) return sameDay[0] || null;
+
+  if (opts.hasDate) {
+    const exact = sameDay.find((s) => {
+      const p = bogotaParts(s.start);
+      return p.hour * 60 + p.minute === wantMin;
+    });
+    if (exact) return exact;
+    const near = sameDay.find((s) => {
+      const p = bogotaParts(s.start);
+      return Math.abs(p.hour * 60 + p.minute - wantMin) <= 15;
+    });
+    return near || null;
+  }
+
   const sameClock = collected.filter((s) => {
     const p = bogotaParts(s.start);
     return p.hour * 60 + p.minute === wantMin;
   });
-  const onDay = sameClock.find((s) => bogotaParts(s.start).ymd === want.ymd);
-  if (onDay) return onDay;
-  if (sameClock[0]) return sameClock[0];
+  return sameClock[0] || null;
+}
 
-  const sameDay = collected.filter((s) => bogotaParts(s.start).ymd === want.ymd);
-  const near = sameDay.find((s) => {
-    const p = bogotaParts(s.start);
-    return Math.abs(p.hour * 60 + p.minute - wantMin) <= 15;
-  });
-  return near || null;
+function daysUntil(ymd: string) {
+  const today = bogotaParts(new Date()).ymd;
+  const a = new Date(`${today}T12:00:00-05:00`).getTime();
+  const b = new Date(`${ymd}T12:00:00-05:00`).getTime();
+  return Math.ceil((b - a) / 86400000);
 }
 
 function pad2(n: number) {
@@ -298,32 +407,180 @@ export function nextClock(hour: number, minute: number, after = new Date()) {
   return at;
 }
 
-export function parseWhenHint(raw?: string | null) {
+export type WhenHint = {
+  at: Date;
+  hasDate: boolean;
+  hasTime: boolean;
+};
+
+const MONTHS: Record<string, number> = {
+  enero: 1,
+  ene: 1,
+  febrero: 2,
+  feb: 2,
+  marzo: 3,
+  abril: 4,
+  abr: 4,
+  mayo: 5,
+  junio: 6,
+  jun: 6,
+  julio: 7,
+  jul: 7,
+  agosto: 8,
+  ago: 8,
+  septiembre: 9,
+  setiembre: 9,
+  sept: 9,
+  sep: 9,
+  octubre: 10,
+  oct: 10,
+  noviembre: 11,
+  nov: 11,
+  diciembre: 12,
+  dic: 12,
+};
+
+const WEEKDAY_INDEX: Record<string, number> = {
+  domingo: 0,
+  lunes: 1,
+  martes: 2,
+  miercoles: 3,
+  miércoles: 3,
+  jueves: 4,
+  viernes: 5,
+  sabado: 6,
+  sábado: 6,
+};
+
+function normalizeClock(hour: number, minute: number, merRaw: string) {
+  let h = hour;
+  const mer = merRaw.toLowerCase().replace(/\s/g, "");
+  if (mer.startsWith("p") && h < 12) h += 12;
+  if (mer.startsWith("a") && h === 12) h = 0;
+  return { hour: h, minute };
+}
+
+function extractClock(t: string): { hour: number; minute: number } | null {
+  const iso = t.match(/\d{4}-\d{2}-\d{2}[T\s](\d{1,2}):(\d{2})/);
+  if (iso) return normalizeClock(Number(iso[1]), Number(iso[2]), "");
+
+  const las = t.match(
+    /a\s+las\s+(\d{1,2})(?:\s*[:.h]\s*(\d{2}))?\s*(a\.?\s*m\.?|p\.?\s*m\.?|am|pm)?/i,
+  );
+  if (las) return normalizeClock(Number(las[1]), las[2] ? Number(las[2]) : 0, las[3] || "");
+
+  const ampm = t.match(/(\d{1,2})\s*[:.h]\s*(\d{2})\s*(a\.?\s*m\.?|p\.?\s*m\.?|am|pm)/i);
+  if (ampm) return normalizeClock(Number(ampm[1]), Number(ampm[2]), ampm[3] || "");
+
+  const clock = t.match(/(?:^|[^\d/])(\d{1,2})\s*[:.h]\s*(\d{2})(?!\d)/);
+  if (clock) return normalizeClock(Number(clock[1]), Number(clock[2]), "");
+
+  return null;
+}
+
+function ymdFromParts(year: number, month: number, day: number, todayYmd: string, rollYear: boolean) {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  let ymd = `${year}-${pad2(month)}-${pad2(day)}`;
+  if (rollYear && ymd < todayYmd) ymd = `${year + 1}-${pad2(month)}-${pad2(day)}`;
+  return ymd;
+}
+
+function nextWeekdayYmd(todayYmd: string, name: string) {
+  const folded = name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  const want = WEEKDAY_INDEX[name.toLowerCase()] ?? WEEKDAY_INDEX[folded];
+  if (want == null) return null;
+  const cur = new Date(`${todayYmd}T12:00:00-05:00`).getUTCDay();
+  const delta = (want - cur + 7) % 7;
+  return addDaysYmd(todayYmd, delta);
+}
+
+function extractYmd(t: string, todayYmd: string): string | null {
+  const iso = t.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  const named = t.match(
+    /\b(\d{1,2})\s+(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|ene|feb|abr|jun|jul|ago|sept|sep|oct|nov|dic)\b(?:\s+(?:de\s+)?(\d{4}))?/i,
+  );
+  if (named) {
+    const month = MONTHS[named[2].toLowerCase()];
+    const year = named[3] ? Number(named[3]) : Number(todayYmd.slice(0, 4));
+    return ymdFromParts(year, month, Number(named[1]), todayYmd, !named[3]);
+  }
+
+  const dmy = t.match(/\b(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{2,4}))?\b/);
+  if (dmy) {
+    const day = Number(dmy[1]);
+    const month = Number(dmy[2]);
+    if (month <= 12) {
+      const year = dmy[3]
+        ? dmy[3].length === 2
+          ? 2000 + Number(dmy[3])
+          : Number(dmy[3])
+        : Number(todayYmd.slice(0, 4));
+      return ymdFromParts(year, month, day, todayYmd, !dmy[3]);
+    }
+  }
+
+  if (/\bhoy\b/.test(t)) return todayYmd;
+  if (/\bpasado\s+ma[ñn]ana\b/.test(t)) return addDaysYmd(todayYmd, 2);
+  if (/\bma[ñn]ana\b/.test(t)) return addDaysYmd(todayYmd, 1);
+
+  const wd = t.match(
+    /\b(?:este|el|para\s+el)\s+(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/i,
+  ) || t.match(/\b(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/i);
+  if (wd) return nextWeekdayYmd(todayYmd, wd[1]);
+
+  return null;
+}
+
+export function parseWhenHint(raw?: string | null): WhenHint | null {
   if (!raw) return null;
   const t = raw.trim();
   if (!t || /pr[oó]ximo|cuando sea|primer hueco|antes posible/i.test(t)) return null;
 
-  const iso = t.match(/(\d{4}-\d{2}-\d{2})[T\s](\d{1,2}):(\d{2})/);
-  if (iso) {
-    const at = fromBogotaLocal(`${iso[1]}T${pad2(Number(iso[2]))}:${iso[3]}`);
-    if (at.getTime() <= Date.now() + 60_000) {
-      return nextClock(Number(iso[2]), Number(iso[3]));
-    }
-    return at;
-  }
+  const todayYmd = bogotaParts(new Date()).ymd;
+  const ymd = extractYmd(t, todayYmd);
+  const clock = extractClock(t);
 
-  const clock = t.match(/(\d{1,2})\s*[:.h]\s*(\d{2})\s*(a\.?\s*m\.?|p\.?\s*m\.?|am|pm)?/i);
-  if (!clock) return null;
-  let hour = Number(clock[1]);
-  const minute = Number(clock[2]);
-  const mer = (clock[3] || "").toLowerCase().replace(/\s/g, "");
-  if (mer.startsWith("p") && hour < 12) hour += 12;
-  if (mer.startsWith("a") && hour === 12) hour = 0;
-  return nextClock(hour, minute);
+  if (ymd && clock) {
+    return {
+      at: fromBogotaLocal(`${ymd}T${pad2(clock.hour)}:${pad2(clock.minute)}`),
+      hasDate: true,
+      hasTime: true,
+    };
+  }
+  if (ymd) {
+    return {
+      at: fromBogotaLocal(`${ymd}T12:00`),
+      hasDate: true,
+      hasTime: false,
+    };
+  }
+  if (clock) {
+    return {
+      at: nextClock(clock.hour, clock.minute),
+      hasDate: false,
+      hasTime: true,
+    };
+  }
+  return null;
 }
 
-export function fmtSlots(slots: { start: Date; end: Date }[], limit = 8) {
-  return slots.slice(0, limit).map((s) => fmtSlotLine(s.start)).join(" · ") || "sin huecos en los próximos días";
+export function fmtSlotsByDay(slots: { start: Date; end: Date }[], perDay = 4, maxDays = 8) {
+  const groups = new Map<string, Date[]>();
+  for (const s of slots) {
+    const ymd = bogotaParts(s.start).ymd;
+    const arr = groups.get(ymd) || [];
+    if (arr.length < perDay) arr.push(s.start);
+    groups.set(ymd, arr);
+  }
+  const lines = [...groups.entries()].slice(0, maxDays).map(([ymd, times]) => {
+    return `${humanYmd(ymd)} ABIERTO: ${times.map((d) => fmtSlotLine(d)).join(", ")}`;
+  });
+  return lines.join(" · ") || "sin huecos en los próximos días";
 }
 
 export function fmtSlotLine(d: Date) {

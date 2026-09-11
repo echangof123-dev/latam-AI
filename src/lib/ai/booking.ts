@@ -1,6 +1,18 @@
 import { prisma } from "../db";
 import type { Channel } from "@prisma/client";
-import { availableSlotsAnyStaff, fmtRange, fmtSlotLine, nextOpenSlot, parseWhenHint } from "../reservations";
+import {
+  availableSlotsAnyStaff,
+  bogotaParts,
+  fmtRange,
+  fmtSlotLine,
+  fmtSlotsByDay,
+  humanYmd,
+  nextOpenSlot,
+  parseHours,
+  parseWhenHint,
+  weekKeyFromYmd,
+  windowsForYmd,
+} from "../reservations";
 
 export function fmt(d: Date) {
   return fmtRange(d);
@@ -64,19 +76,42 @@ export async function ensureCustomer(tenantId: string, phone: string, name?: str
   return prisma.customer.create({ data: { tenantId, name, phone } });
 }
 
-export async function listAvailability(tenant: TenantBundle, serviceHint: string) {
+export async function listAvailability(tenant: TenantBundle, serviceHint: string, whenHint?: string) {
   const service = pickService(tenant, serviceHint);
   if (!service) return "Aún no hay servicios cargados.";
+  const branch = await prisma.branch.findFirst({ where: { tenantId: tenant.id } });
+  const hours = parseHours(branch?.hoursJson || "");
+  const hint = parseWhenHint(whenHint);
   const slots = await availableSlotsAnyStaff({
     tenantId: tenant.id,
     serviceId: service.id,
-    days: 10,
+    branchId: tenant.branches[0]?.id,
+    days: 16,
   });
-  if (!slots.length) {
-    return `No hay huecos libres para ${service.name} en los próximos 10 días (horario de sede y profesionales ocupados).`;
+
+  if (hint?.hasDate) {
+    const ymd = bogotaParts(hint.at).ymd;
+    const today = bogotaParts(new Date()).ymd;
+    const win = windowsForYmd(hours, ymd);
+    const label = humanYmd(ymd);
+    const daySlots = slots.filter((s) => bogotaParts(s.start).ymd === ymd);
+    if (ymd < today) {
+      return `${label} ya pasó. No está cerrado: simplemente ya no se agenda hacia atrás. Próximos huecos: ${fmtSlotsByDay(slots)}`;
+    }
+    if (!win.length) {
+      return `${label} estamos CERRADOS según el horario de la sede (${weekKeyFromYmd(ymd)}). No es que esté lleno: ese día no hay atención. Próximos días ABIERTOS: ${fmtSlotsByDay(slots)}`;
+    }
+    if (daySlots.length) {
+      const times = daySlots.slice(0, 12).map((s) => fmtSlotLine(s.start)).join(" · ");
+      return `${label} SÍ estamos ABIERTOS (${win.join(" y ")}). Hay huecos LIBRES, no está cerrado. Huecos: ${times}`;
+    }
+    return `${label} SÍ estamos ABIERTOS (${win.join(" y ")}) pero no quedan huecos libres ese día. Alternativas ABIERTAS: ${fmtSlotsByDay(slots)}`;
   }
-  const lines = slots.slice(0, 12).map((s) => fmtSlotLine(s.start)).join(" · ");
-  return `Huecos LIBRES para ${service.name} (${service.durationMin} min). No están ocupados. Usa el valor cuando= al agendar o reprogramar: ${lines}.`;
+
+  if (!slots.length) {
+    return `No hay huecos libres para ${service.name} en los próximos días (horario de sede y profesionales ocupados).`;
+  }
+  return `Días ABIERTOS y huecos LIBRES para ${service.name} (${service.durationMin} min). Un día sin citas sigue ABIERTO. Usa el valor cuando= al agendar: ${fmtSlotsByDay(slots)}. Si preguntan por un día concreto, vuelve a consultar con cuando=esa fecha.`;
 }
 
 export async function bookAppointment(opts: {
@@ -101,13 +136,15 @@ export async function bookAppointment(opts: {
     serviceId: service.id,
     preferStaffId: staff?.id,
     branchId: opts.tenant.branches[0]?.id,
-    when: when || undefined,
+    when: when?.at,
+    hasDate: when?.hasDate,
+    hasTime: when?.hasTime,
     durationMin: service.durationMin,
   });
   if (!slot) {
-    const alt = await listAvailability(opts.tenant, service.name);
+    const alt = await listAvailability(opts.tenant, service.name, opts.whenHint);
     return when
-      ? `No pude dejar esa hora exacta. Estos SÍ están libres: ${alt}`
+      ? `No pude dejar esa hora exacta. ${alt}`
       : `No encontré un hueco libre. ${alt}`;
   }
   const staffRow = opts.tenant.staff.find((s) => s.id === slot.staffId) || opts.tenant.staff[0];
@@ -180,13 +217,15 @@ export async function rescheduleAppointment(tenant: TenantBundle, from: string, 
     serviceId: appt.serviceId,
     preferStaffId: appt.staffId,
     branchId: appt.branchId || undefined,
-    when: when || undefined,
+    when: when?.at,
+    hasDate: when?.hasDate,
+    hasTime: when?.hasTime,
     ignoreId: appt.id,
     durationMin: appt.service.durationMin,
   });
   if (!slot) {
-    const alt = await listAvailability(tenant, appt.service.name);
-    return `No pude moverla a esa hora. Huecos LIBRES: ${alt}`;
+    const alt = await listAvailability(tenant, appt.service.name, whenHint);
+    return `No pude moverla a esa hora. ${alt}`;
   }
   await prisma.appointment.update({
     where: { id: appt.id },

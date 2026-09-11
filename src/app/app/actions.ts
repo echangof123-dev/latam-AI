@@ -72,7 +72,12 @@ export async function updateBranchHours(formData: FormData) {
   const hours: Record<string, string[]> = {};
   for (const k of keys) {
     const raw = String(formData.get(k) || "").trim();
-    hours[k] = raw ? [raw] : [];
+    hours[k] = raw
+      ? raw
+          .split(/[,;]/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
   }
   await prisma.branch.updateMany({
     where: { id, tenantId },

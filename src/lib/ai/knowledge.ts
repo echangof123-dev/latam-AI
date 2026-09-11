@@ -1,6 +1,6 @@
 import { prisma } from "../db";
 import { VERTICAL_LABEL } from "../modules";
-import { formatHoursHuman, fmtRange } from "../reservations";
+import { formatHoursHuman, fmtRange, upcomingCalendar } from "../reservations";
 import { fmt } from "./booking";
 
 export async function crmBusyWindow(tenantId: string, days = 3) {
@@ -69,6 +69,8 @@ export async function businessKnowledge(tenantId: string, customerPhone: string)
       (b) =>
         `- ${b.name}, ${b.address}. Intervalo ${b.slotMin || slot} min. ${formatHoursHuman(b.hoursJson)}`,
     ),
+    "Calendario real de los próximos 14 días (ABIERTO/CERRADO; un día sin citas sigue ABIERTO):",
+    upcomingCalendar(tenant.branches[0]?.hoursJson || "", 14),
     "Servicios del catálogo CRM:",
     ...tenant.services.map(
       (s) => `- ${s.name}: $${s.priceCents.toLocaleString("es-CO")} · dura ${s.durationMin} min`,

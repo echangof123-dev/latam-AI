@@ -3,6 +3,7 @@ import { resolveTenantByNumber, moduleOn } from "../tenant";
 import type { Channel, Tenant } from "@prisma/client";
 import { bump, bookAppointment, cancelAppointment, ensureCustomer, rescheduleAppointment } from "./booking";
 import { generateReply, synthesizeVoice } from "./openai-agent";
+import { formatHoursHuman, upcomingCalendar } from "../reservations";
 
 type Inbound = {
   to: string;
@@ -112,8 +113,8 @@ async function decide(opts: {
   }
 
   if (/horario|abren|cierran/.test(low)) {
-    const hours = tenant.branches[0]?.hoursJson || "Lun-Vie 9 a 18";
-    return `${greeting} Horario de ${tenant.branches[0]?.name || "la sede"}: ${hours}`;
+    const raw = tenant.branches[0]?.hoursJson || "";
+    return `${greeting} Horario de ${tenant.branches[0]?.name || "la sede"}: ${formatHoursHuman(raw)}. Próximos días: ${upcomingCalendar(raw, 7)}`;
   }
 
   if (/precio|cuánto|cuesta|vale/.test(low)) {
@@ -124,7 +125,7 @@ async function decide(opts: {
   }
 
   if (/cancel/.test(low)) return cancelAppointment(tenant.id, from);
-  if (/reprogram|cambiar cita|mover/.test(low)) return rescheduleAppointment(tenant, from);
+  if (/reprogram|cambiar cita|mover/.test(low)) return rescheduleAppointment(tenant, from, text);
 
   if (/agend|reserv|cita|turno|quiero un|necesito/.test(low)) {
     if (!customer) return `${greeting} Con gusto. ¿Cómo te llamas para dejar la reserva?`;
@@ -134,6 +135,7 @@ async function decide(opts: {
       channel,
       serviceHint: low,
       customerName: customer.name,
+      whenHint: text,
     });
   }
 
