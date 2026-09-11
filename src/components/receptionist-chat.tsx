@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CLIENT_VOICE } from "@/lib/brand";
 
-type Biz = { name: string; phone: string };
+type Biz = { name: string; phone: string; clientName?: string };
 type Msg = { role: "user" | "ai"; text: string };
 
 export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
@@ -20,29 +21,22 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
     localStorage.setItem(key, n);
     return n;
   });
-  const [msgs, setMsgs] = useState<Msg[]>([
-    {
-      role: "ai",
-      text: "Hola, soy Sofía. Pregúntame por precios, horarios o una reserva.",
-    },
-  ]);
   const box = useRef<HTMLDivElement>(null);
   const recRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const bizName = useMemo(
-    () => businesses.find((b) => b.phone === to)?.name || "el negocio",
-    [businesses, to],
-  );
+  const current = useMemo(() => businesses.find((b) => b.phone === to) || businesses[0], [businesses, to]);
+  const agent = current?.clientName || "Sofía";
+  const bizName = current?.name || "el negocio";
+  const initial = agent.slice(0, 1).toUpperCase();
+
+  const [msgs, setMsgs] = useState<Msg[]>([
+    { role: "ai", text: `Hola, soy ${agent}, de ${bizName}. ¿En qué le ayudo?` },
+  ]);
 
   useEffect(() => {
-    setMsgs([
-      {
-        role: "ai",
-        text: `Hola, soy Sofía, de ${bizName}. Dime en qué te ayudo.`,
-      },
-    ]);
-  }, [to, bizName]);
+    setMsgs([{ role: "ai", text: `Hola, soy ${agent}, de ${bizName}. ¿En qué le ayudo?` }]);
+  }, [to, agent, bizName]);
 
   useEffect(() => {
     box.current?.scrollTo({ top: box.current.scrollHeight, behavior: "smooth" });
@@ -54,7 +48,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
       const res = await fetch("/api/channels/voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: phrase }),
+        body: JSON.stringify({ text: phrase, voice: CLIENT_VOICE }),
       });
       const data = await res.json().catch(() => null);
       if (data?.audio) {
@@ -67,7 +61,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
         return;
       }
     } catch {
-      /* texto ya está en pantalla */
+      /* texto en pantalla */
     }
     setSpeaking(false);
   }
@@ -91,7 +85,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
       const data = await res.json().catch(() => null);
       const reply =
         data?.reply ||
-        "Soy Sofía. Ahora mismo no pude completar la respuesta. ¿Lo intentamos otra vez?";
+        `Soy ${agent}. Ahora mismo no pude completar la respuesta. ¿Lo intentamos otra vez?`;
       setMsgs((m) => [...m, { role: "ai", text: reply }]);
       setBusy(false);
       if (data?.reply) void speakHuman(reply);
@@ -117,6 +111,8 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
       setListening(false);
       return;
     }
+    audioRef.current?.pause();
+    setSpeaking(false);
     const rec = new SR();
     rec.lang = "es-CO";
     rec.interimResults = false;
@@ -129,14 +125,17 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
     rec.start();
   }
 
+  const status = speaking ? "Hablando…" : busy ? "Pensando…" : listening ? "Te escucho…" : "En línea · voz de mujer";
+
   return (
     <div className="card overflow-hidden p-0">
-      <div className="px-6 py-5 border-b border-white/10">
-        <p className="text-xl font-semibold">Sofía</p>
-        <p className="text-sm text-slate-400">Recepcionista IA de {bizName}</p>
-        <p className="text-xs text-emerald-400 mt-1">
-          {speaking ? "Hablando…" : busy ? "Pensando…" : listening ? "Te escucho…" : "En línea"}
-        </p>
+      <div className="px-6 py-5 border-b border-white/10 flex items-center gap-3">
+        <span className={`agent-face agent-face-client ${speaking ? "ring-2 ring-rose-300/60" : ""}`}>{initial}</span>
+        <div>
+          <p className="text-lg font-semibold leading-tight">{agent}</p>
+          <p className="text-sm text-slate-400">{bizName} · recepción</p>
+          <p className="text-xs text-emerald-400 mt-0.5">{status}</p>
+        </div>
       </div>
 
       {businesses.length > 1 ? (
@@ -145,23 +144,17 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
           <select value={to} onChange={(e) => setTo(e.target.value)} className="w-full">
             {businesses.map((b) => (
               <option key={b.phone} value={b.phone}>
-                {b.name}
+                {b.clientName ? `${b.clientName} · ${b.name}` : b.name}
               </option>
             ))}
           </select>
         </div>
       ) : null}
 
-      <div ref={box} className="h-[380px] overflow-y-auto px-6 py-4 space-y-3">
+      <div ref={box} className="h-[400px] overflow-y-auto px-6 py-4 space-y-3">
         {msgs.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <p
-              className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                m.role === "user" ? "bg-gold-500 text-ink-950" : "bg-white/10 text-slate-100"
-              }`}
-            >
-              {m.text}
-            </p>
+            <p className={m.role === "user" ? "chat-user" : "chat-agent"}>{m.text}</p>
           </div>
         ))}
       </div>
@@ -183,7 +176,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Escribe aquí…  Ej: Hola, quiero un corte"
+          placeholder={`Escríbele a ${agent}…`}
           className="flex-1"
           disabled={busy}
         />

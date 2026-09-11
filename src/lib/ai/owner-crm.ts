@@ -1,6 +1,7 @@
 import { prisma } from "../db";
 import { money } from "../auth";
 import { VERTICAL_LABEL } from "../modules";
+import { agentsFor } from "../brand";
 import {
   STATUS_LABEL,
   addDaysYmd,
@@ -55,6 +56,7 @@ export async function ownerBriefing(tenantId: string) {
     },
   });
   if (!tenant) return "Sin negocio.";
+  const agents = agentsFor(tenant.vertical, tenant.name);
 
   const today = bogotaParts(new Date()).ymd;
   const weekEnd = addDaysYmd(today, 7);
@@ -119,6 +121,7 @@ export async function ownerBriefing(tenantId: string) {
 
   return [
     `Negocio CRM: ${tenant.name}. Rubro: ${VERTICAL_LABEL[tenant.vertical] || tenant.vertical}. Zona: ${tenant.timezone}. Intervalo ${tenant.slotMin || 15} min.`,
+    `Recepcionista de clientes: ${agents.client.name} (voz de mujer). Asistente del dueño: ${agents.owner.name} (voz de hombre).`,
     `Hoy (${today}): ${liveToday.length} citas vigentes de ${todayAppts.length} en el día. Esta semana (vigentes): ${weekAppts}. Clientes en CRM: ${customers}. Avisos sin leer: ${unread}.`,
     `Citas de hoy: ${liveToday.length ? liveToday.map(lineAppt).join(" | ") : "ninguna vigente"}`,
     `Estados históricos de citas: ${byStatus.map((s) => `${STATUS_LABEL[s.status] || s.status} ${s._count}`).join(", ") || "sin citas"}`,
@@ -144,13 +147,13 @@ export async function ownerBriefing(tenantId: string) {
       ? `Inventario: ${inventory.map((i) => `${i.name} SKU ${i.sku} qty ${i.qty}`).join(" | ")}`
       : "Sin inventario cargado.",
     metrics.length
-      ? `Sofía (7 días): ${metrics
+      ? `${agents.client.name} (7 días): ${metrics
           .map(
             (m) =>
               `${m.day.toISOString().slice(0, 10)} chats ${m.conversations} reservas ${m.bookings} cancel ${m.cancellations}`,
           )
           .join(" | ")}`
-      : "Aún no hay métricas de Sofía.",
+      : `Aún no hay métricas de ${agents.client.name}.`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -323,7 +326,7 @@ export async function runOwnerTool(tenantId: string, name: string, args: Record<
       orderBy: { day: "desc" },
       take: 14,
     });
-    if (!rows.length) return "Sofía aún no tiene métricas en este negocio.";
+    if (!rows.length) return `La recepcionista aún no tiene métricas en este negocio.`;
     const sum = rows.reduce(
       (a, m) => ({
         c: a.c + m.conversations,

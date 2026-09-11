@@ -18,8 +18,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["system-ui", "Segoe UI", "sans-serif"],
-        display: ["Georgia", "serif"],
+        sans: ["var(--font-sans)", "system-ui", "Segoe UI", "sans-serif"],
+        display: ["var(--font-display)", "Georgia", "serif"],
       },
     },
   },

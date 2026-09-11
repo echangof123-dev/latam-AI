@@ -10,11 +10,14 @@ import {
   rescheduleAppointment,
 } from "./booking";
 
+import { agentsFor, CLIENT_VOICE } from "../brand";
+
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 type ToolTenant = {
   id: string;
   name: string;
+  vertical?: string;
   services: { id: string; name: string; durationMin: number; priceCents: number }[];
   staff: { id: string; name: string }[];
   branches: { id: string; name: string }[];
@@ -128,7 +131,7 @@ export async function synthesizeVoiceMp3(text: string, voice?: string) {
       },
       body: JSON.stringify({
         model: "tts-1",
-        voice: voice || process.env.OPENAI_TTS_VOICE || "nova",
+        voice: voice || CLIENT_VOICE,
         input: text.slice(0, 1200),
         speed: 0.97,
       }),
@@ -179,6 +182,7 @@ export async function generateReply(opts: {
 
   try {
     const knowledge = await businessKnowledge(opts.tenant.id, opts.from);
+    const agent = agentsFor(opts.tenant.vertical, opts.tenant.name).client;
     const history = await prisma.message.findMany({
       where: { conversationId: opts.conversationId },
       orderBy: { createdAt: "desc" },
@@ -189,7 +193,7 @@ export async function generateReply(opts: {
     const messages: Array<Record<string, unknown>> = [
       {
         role: "system",
-        content: `Eres Sofía, una recepcionista humana de ${opts.tenant.name}. No eres un bot rígido: hablas como una persona real, cálida, de Latinoamérica.
+        content: `Eres ${agent.name}, recepcionista de ${opts.tenant.name}. Eres una mujer, profesional y cálida, de Latinoamérica. No eres un bot rígido: hablas como alguien en el mostrador.
 Tratas a la gente de usted o tú según el tono de ellos. Usas el nombre si lo conoces. Una idea por frase, 2 a 5 frases. Puedes empatizar un segundo (“claro”, “con gusto”) y luego ir al grano.
 SOLO usas la ficha CRM de ESTE negocio (horarios, intervalo, servicios, clientes y citas ya agendadas). Nunca pises una cita ocupada: usa ver_disponibilidad y consultar_crm.
 Cerrado SOLO si el calendario o ver_disponibilidad dicen CERRADO. “Sin reservas” o un día vacío en la agenda significa LIBRE, no cerrado. Nunca digas que un miércoles u otra fecha está cerrada si el calendario marca ABIERTO.

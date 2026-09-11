@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("inbound", err);
     return NextResponse.json({
-      reply: "Soy Sofía. Tuve un tropiezo al responder. Escríbeme de nuevo, por favor.",
+      reply: "La recepción tuvo un tropiezo al responder. Escríbeme de nuevo, por favor.",
       audio: null,
     });
   }

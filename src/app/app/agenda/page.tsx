@@ -283,7 +283,7 @@ export default async function AgendaPage({
             <button className="btn-gold w-full">Confirmar reserva</button>
             <p className="text-[11px] text-slate-500">
               El sistema rechaza solapes con el mismo profesional y respeta el horario de la sede al
-              ofrecer huecos a Sofía.
+              ofrecer huecos a la recepción.
             </p>
           </form>
         </aside>

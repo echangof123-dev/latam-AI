@@ -2,13 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BrandLockup } from "./mark";
 
 export function Brand() {
-  return (
-    <Link href="/" className="font-display text-xl text-gold-400 tracking-tight">
-      Eje Uno
-    </Link>
-  );
+  return <BrandLockup href="/" compact />;
 }
 
 export function LogoutButton() {
@@ -25,7 +22,7 @@ export function NavLink({ href, children }: { href: string; children: React.Reac
   return (
     <Link
       href={href}
-      className={`block rounded-xl px-3 py-2 text-[14px] font-medium transition ${
+      className={`block rounded-xl px-3 py-2 text-[13.5px] font-medium transition ${
         active ? "bg-gold-500/15 text-gold-400" : "text-slate-300 hover:bg-white/5 hover:text-white"
       }`}
     >
@@ -44,10 +41,10 @@ export function PageHeader({
   hint?: string;
 }) {
   return (
-    <header className="space-y-1">
+    <header className="space-y-1.5">
       {kicker ? <p className="text-[11px] uppercase tracking-[0.22em] text-gold-500/80">{kicker}</p> : null}
       <h1 className="font-display text-4xl leading-tight">{title}</h1>
-      {hint ? <p className="text-slate-400 text-sm max-w-2xl">{hint}</p> : null}
+      {hint ? <p className="text-slate-400 text-sm max-w-2xl leading-relaxed">{hint}</p> : null}
     </header>
   );
 }

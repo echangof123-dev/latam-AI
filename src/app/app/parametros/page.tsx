@@ -28,7 +28,7 @@ export default async function ParametrosPage() {
         <p className="text-[11px] uppercase tracking-[0.22em] text-gold-500/80">CRM</p>
         <h1 className="font-display text-4xl">Parametrización</h1>
         <p className="text-slate-400 text-sm mt-2">
-          Horario e intervalo de {tenant.name}. Sofía y la agenda leen estos datos y no pisan citas ya
+          Horario e intervalo de {tenant.name}. La recepción y la agenda leen estos datos y no pisan citas ya
           guardadas en el CRM.
         </p>
       </header>

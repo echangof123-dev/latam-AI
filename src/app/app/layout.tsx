@@ -3,6 +3,7 @@ import { requireOwner } from "@/lib/guards";
 import { moduleOn } from "@/lib/tenant";
 import { MODULE_CATALOG } from "@/lib/modules";
 import { Brand, LogoutButton, NavLink } from "@/components/nav";
+import { agentsFor } from "@/lib/brand";
 
 const HREF: Record<string, string> = {
   agenda: "/app/agenda",
@@ -27,19 +28,24 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const unread = await prisma.ownerNotification.count({
     where: { tenantId: tenant.id, read: false },
   });
+  const agents = agentsFor(tenant.vertical, tenant.name);
 
   return (
     <div className="app-shell">
       <aside className="app-aside">
         <div>
           <Brand />
-          <p className="text-sm text-slate-200 mt-3">{tenant.name}</p>
-          <p className="text-xs text-slate-500">Reservas · recepción IA</p>
+          <p className="text-sm text-slate-200 mt-4 font-medium">{tenant.name}</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {agents.client.name} · {agents.owner.name}
+          </p>
         </div>
         <nav className="space-y-0.5">
-          <NavLink href="/chat">Hablar con Sofía</NavLink>
+          <p className="nav-label">Atención</p>
+          <NavLink href="/chat">Recepción · {agents.client.name}</NavLink>
+          <NavLink href="/app/asistente">{agents.owner.name}</NavLink>
+          <p className="nav-label">Operación</p>
           <NavLink href="/app">Inicio {unread ? `(${unread})` : ""}</NavLink>
-          <NavLink href="/app/asistente">Asistente del negocio</NavLink>
           <NavLink href="/app/parametros">Parametrización</NavLink>
           {MODULE_CATALOG.filter((m) => moduleOn(tenant.modules, m.key) && HREF[m.key]).map((m) => (
             <NavLink key={m.key} href={HREF[m.key]}>

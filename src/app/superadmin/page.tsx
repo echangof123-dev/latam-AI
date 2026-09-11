@@ -15,7 +15,7 @@ export default async function SuperadminPage() {
       <header>
         <h1 className="font-display text-4xl">Negocios</h1>
         <p className="text-slate-300 mt-2 text-lg">
-          Crea o pausa empresas. Para hablar con la IA abre <b>Hablar con Sofía</b>. WhatsApp es opcional.
+          Crea o pausa empresas. La recepción y el asistente del dueño se nombran según el rubro.
         </p>
       </header>
 

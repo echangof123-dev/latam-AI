@@ -70,7 +70,7 @@ const tools = [
     type: "function" as const,
     function: {
       name: "metricas",
-      description: "Resultados de Sofía (chats, reservas, cancelaciones).",
+      description: "Resultados de la recepcionista (chats, reservas, cancelaciones).",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -109,6 +109,8 @@ export async function generateOwnerReply(opts: {
   tenantId: string;
   tenantName: string;
   ownerName: string;
+  agentName: string;
+  clientName: string;
   history: { role: string; body: string }[];
   question: string;
 }) {
@@ -120,8 +122,8 @@ export async function generateOwnerReply(opts: {
     const messages: Array<Record<string, unknown>> = [
       {
         role: "system",
-        content: `Eres Elena, asistente interno del DUEÑO de ${opts.tenantName}. El dueño se llama ${opts.ownerName}.
-No eres Sofía: Sofía atiende clientes y no les muestra el CRM completo. Tú SÍ ves todo este negocio: agenda, clientes, dinero, inventario, horarios, equipo y métricas de Sofía.
+        content: `Eres ${opts.agentName}, asistente interno del DUEÑO de ${opts.tenantName}. El dueño se llama ${opts.ownerName}. Eres un hombre, sobrio y profesional.
+No eres ${opts.clientName}: ella atiende clientes y no les muestra el CRM completo. Tú SÍ ves todo este negocio: agenda, clientes, dinero, inventario, horarios, equipo y métricas de ${opts.clientName}.
 SOLO este tenant. Nunca inventes cifras ni citas: usa herramientas si el dato no está claro en la ficha o si piden una fecha/cliente concreto.
 Un día “sin reservas” está vacío (se puede agendar), no cerrado, salvo que el calendario diga CERRADO.
 Responde en español, clara, con números, como si se lo estuvieras contando en voz alta: frases cortas, sin tablas ni markdown. Si hay muchas citas, di el total y las más próximas. Si no hay dato, dilo y sugiere dónde cargarlo (Parametrización, Agenda, Clientes).

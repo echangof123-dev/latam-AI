@@ -164,7 +164,7 @@ export async function handleWhatsAppWebhook(payload: unknown) {
         whatsappTrace.lastHint = "Recibí tu mensaje. Voy a contestar.";
 
         let reply =
-          "Hola, soy Sofía, la recepción. ¿En qué te ayudo? Puedo dar precios y agendar.";
+          "Hola, soy la recepción. ¿En qué te ayudo? Puedo dar precios y agendar.";
         try {
           const result = await handleInbound({
             to,

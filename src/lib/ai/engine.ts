@@ -4,6 +4,7 @@ import type { Channel, Tenant } from "@prisma/client";
 import { bump, bookAppointment, cancelAppointment, ensureCustomer, rescheduleAppointment } from "./booking";
 import { generateReply, synthesizeVoice } from "./openai-agent";
 import { formatHoursHuman, upcomingCalendar } from "../reservations";
+import { agentsFor, CLIENT_VOICE } from "../brand";
 
 type Inbound = {
   to: string;
@@ -77,7 +78,7 @@ export async function handleInbound(input: Inbound) {
     data: { conversationId: conversation.id, role: "assistant", body: reply },
   });
 
-  const audio = input.wantAudio ? await synthesizeVoice(reply) : null;
+  const audio = input.wantAudio ? await synthesizeVoice(reply, CLIENT_VOICE) : null;
 
   return { reply, tenantName: tenant.name, tenantId: tenant.id, audio };
 }
@@ -109,7 +110,8 @@ async function decide(opts: {
   if (/h+o+l+[ao]|hoka|holi|buenas|buenos d[ií]as|buenas tardes|\bhi\b|\bhey\b/.test(low) && low.length < 50) {
     const who = customer ? `Hola ${customer.name.split(" ")[0]}, qué gusto.` : "Hola, con gusto te atiendo.";
     const list = tenant.services.map((s) => s.name).join(", ");
-    return `${who} Soy Sofía, de ${tenant.name}. Puedo ayudarte con ${list || "lo que ofrezcamos"}. ¿Qué necesitas?`;
+    const name = agentsFor(tenant.vertical, tenant.name).client.name;
+    return `${who} Soy ${name}, de ${tenant.name}. Puedo ayudarte con ${list || "lo que ofrezcamos"}. ¿Qué necesitas?`;
   }
 
   if (/horario|abren|cierran/.test(low)) {

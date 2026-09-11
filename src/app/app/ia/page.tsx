@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireModule } from "@/lib/guards";
+import { agentsFor } from "@/lib/brand";
 
 export default async function IaPage() {
   const { tenantId } = await requireModule("ia");
+  const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
+  const agents = agentsFor(tenant.vertical, tenant.name);
   const phones = await prisma.phoneNumber.findMany({ where: { tenantId } });
   const metrics = await prisma.aiDailyMetric.findMany({
     where: { tenantId },
@@ -13,16 +16,17 @@ export default async function IaPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <h1 className="font-display text-4xl">Atención IA</h1>
-      <p className="text-slate-400">
-        Sofía atiende a tus clientes por chat, voz y WhatsApp. Elena es tu asistente interno: le
-        preguntas al CRM de este negocio (citas, clientes, ventas) sin ver las charlas de Sofía.
+      <p className="text-slate-400 leading-relaxed">
+        {agents.client.name} atiende a tus clientes (voz de mujer) por chat, voz y WhatsApp.{" "}
+        {agents.owner.name} es tu asistente interno (voz de hombre): le preguntas al CRM sin ver las
+        charlas de la recepción.
       </p>
       <div className="flex flex-wrap gap-3">
         <Link href="/app/asistente" className="btn-gold inline-block">
-          Asistente del negocio
+          Hablar con {agents.owner.name}
         </Link>
         <Link href="/chat" className="btn-ghost inline-block">
-          Probar a Sofía (clientes)
+          Probar a {agents.client.name}
         </Link>
         <Link href="/app/parametros" className="btn-ghost inline-block">
           Parametrizar horario

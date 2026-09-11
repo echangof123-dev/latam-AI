@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { VERTICAL_LABEL } from "../modules";
+import { agentsFor } from "../brand";
 import { formatHoursHuman, fmtRange, upcomingCalendar } from "../reservations";
 import { fmt } from "./booking";
 
@@ -58,9 +59,10 @@ export async function businessKnowledge(tenantId: string, customerPhone: string)
   ]);
 
   const slot = tenant.slotMin || tenant.branches[0]?.slotMin || 15;
+  const agents = agentsFor(tenant.vertical, tenant.name);
 
   const lines = [
-    `Trabajas SOLO para este negocio (CRM): ${tenant.name}.`,
+    `Trabajas SOLO para este negocio (CRM): ${tenant.name}. Eres ${agents.client.name}, recepcionista (voz de mujer).`,
     `Ahora mismo: ${now} (${tenant.timezone}).`,
     `Intervalo de atención (grilla de agenda): cada ${slot} minutos.`,
     `Rubro: ${VERTICAL_LABEL[tenant.vertical] || tenant.vertical}`,

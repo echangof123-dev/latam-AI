@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireOwnerApi } from "@/lib/guards";
 import { generateOwnerReply } from "@/lib/ai/owner-agent";
+import { agentsFor } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -25,6 +26,7 @@ export async function GET() {
   const session = await requireOwnerApi();
   if (!session) return NextResponse.json({ error: "auth" }, { status: 401 });
   const tenant = await prisma.tenant.findUnique({ where: { id: session.tenantId } });
+  const agents = agentsFor(tenant?.vertical, tenant?.name);
   const convo = await prisma.conversation.findFirst({
     where: { tenantId: session.tenantId, customerPhone: `${OWNER_PREFIX}${session.userId}`, channel: "WEB" },
     include: { messages: { orderBy: { createdAt: "desc" }, take: 40 } },
@@ -32,6 +34,9 @@ export async function GET() {
   return NextResponse.json({
     tenantName: tenant?.name || "tu negocio",
     ownerName: session.name,
+    agentName: agents.owner.name,
+    clientName: agents.client.name,
+    voice: agents.owner.voice,
     messages: (convo?.messages || [])
       .slice()
       .reverse()
@@ -55,6 +60,7 @@ export async function POST(req: Request) {
     }
 
     const tenant = await prisma.tenant.findUnique({ where: { id: session.tenantId } });
+    const agents = agentsFor(tenant?.vertical, tenant?.name);
     const convo = await ownerThread(session.tenantId, session.userId);
     await prisma.message.create({
       data: { conversationId: convo.id, role: "owner", body: parsed.data.text },
@@ -71,6 +77,8 @@ export async function POST(req: Request) {
       tenantId: session.tenantId,
       tenantName: tenant?.name || "el negocio",
       ownerName: session.name,
+      agentName: agents.owner.name,
+      clientName: agents.client.name,
       history: prior,
       question: parsed.data.text,
     });

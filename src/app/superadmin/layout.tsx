@@ -14,11 +14,11 @@ export default async function SuperadminLayout({ children }: { children: React.R
           <p className="text-xs text-slate-500">{count} negocios</p>
         </div>
         <nav className="space-y-0.5">
-          <NavLink href="/chat">Hablar con Sofía</NavLink>
+          <NavLink href="/chat">Recepción</NavLink>
           <NavLink href="/superadmin/whatsapp">WhatsApp</NavLink>
           <NavLink href="/superadmin/prueba">Prueba de escritorio</NavLink>
           <NavLink href="/superadmin">Negocios</NavLink>
-          <NavLink href="/superadmin/canal">Probar IA</NavLink>
+          <NavLink href="/superadmin/canal">Probar recepción</NavLink>
         </nav>
         <div className="pt-4 text-sm text-slate-400 border-t border-white/10">
           <p>{session.name}</p>

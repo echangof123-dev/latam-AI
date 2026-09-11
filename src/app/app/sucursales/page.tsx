@@ -20,7 +20,7 @@ export default async function SucursalesPage() {
     <div className="space-y-6">
       <h1 className="font-display text-4xl">Sucursales y horarios</h1>
       <p className="text-slate-400 text-sm">
-        El calendario y Sofía usan estos horarios. También puedes editarlos en Parametrización.
+        El calendario y la recepción usan estos horarios. También puedes editarlos en Parametrización.
       </p>
       <form action={createBranch} className="card grid md:grid-cols-4 gap-3">
         <input name="name" placeholder="Sede" required />

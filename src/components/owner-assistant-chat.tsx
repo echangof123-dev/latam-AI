@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { OWNER_VOICE } from "@/lib/brand";
 
 type Msg = { role: "user" | "ai"; text: string };
 
@@ -16,11 +17,16 @@ const SUGGESTIONS = [
 export function OwnerAssistantChat({
   tenantName,
   ownerName,
+  agentName,
+  clientName,
 }: {
   tenantName: string;
   ownerName: string;
+  agentName: string;
+  clientName: string;
 }) {
   const first = ownerName.split(" ")[0] || "tú";
+  const initial = agentName.slice(0, 1).toUpperCase();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
@@ -29,7 +35,7 @@ export function OwnerAssistantChat({
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       role: "ai",
-      text: `Hola ${first}. Soy Elena, tu asistente de ${tenantName}. Pregúntame por citas, clientes, horarios, ventas, inventario o cómo va Sofía.`,
+      text: `Hola ${first}. Soy ${agentName}, asistente de ${tenantName}. Pregúntame por citas, clientes, horarios, ventas o cómo va ${clientName} con el público.`,
     },
   ]);
   const box = useRef<HTMLDivElement>(null);
@@ -61,7 +67,7 @@ export function OwnerAssistantChat({
           setMsgs(data.messages as Msg[]);
         }
       } catch {
-        /* saludo inicial */
+        /* saludo */
       }
     })();
   }, []);
@@ -73,7 +79,7 @@ export function OwnerAssistantChat({
       const res = await fetch("/api/channels/voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: phrase, voice: "shimmer" }),
+        body: JSON.stringify({ text: phrase, voice: OWNER_VOICE }),
       });
       const data = await res.json().catch(() => null);
       if (data?.audio && voiceOnRef.current) {
@@ -86,7 +92,7 @@ export function OwnerAssistantChat({
         return;
       }
     } catch {
-      /* el texto ya está en pantalla */
+      /* texto */
     }
     setSpeaking(false);
   }
@@ -151,16 +157,19 @@ export function OwnerAssistantChat({
       : listening
         ? "Te escucho…"
         : voiceOn
-          ? "En línea · con voz"
+          ? "En línea · voz de hombre"
           : "En línea · sin voz";
 
   return (
     <div className="card overflow-hidden p-0">
-      <div className="px-6 py-5 border-b border-white/10 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xl font-semibold">Elena</p>
-          <p className="text-sm text-slate-400">Asistente del CRM · {tenantName}</p>
-          <p className="text-xs text-emerald-400 mt-1">{status}</p>
+      <div className="px-6 py-5 border-b border-white/10 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className={`agent-face agent-face-owner ${speaking ? "ring-2 ring-sky-300/60" : ""}`}>{initial}</span>
+          <div>
+            <p className="text-lg font-semibold leading-tight">{agentName}</p>
+            <p className="text-sm text-slate-400">{tenantName} · asistente interno</p>
+            <p className="text-xs text-emerald-400 mt-0.5">{status}</p>
+          </div>
         </div>
         <button
           type="button"
@@ -190,13 +199,7 @@ export function OwnerAssistantChat({
       <div ref={box} className="h-[420px] overflow-y-auto px-6 py-4 space-y-3">
         {msgs.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <p
-              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
-                m.role === "user" ? "bg-gold-500 text-ink-950" : "bg-white/10 text-slate-100"
-              }`}
-            >
-              {m.text}
-            </p>
+            <p className={m.role === "user" ? "chat-user" : "chat-agent"}>{m.text}</p>
           </div>
         ))}
       </div>
@@ -218,7 +221,7 @@ export function OwnerAssistantChat({
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Pregúntame o usa Hablar…"
+          placeholder={`Pregúntale a ${agentName}…`}
           className="flex-1"
           disabled={busy}
         />

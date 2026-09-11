@@ -3,10 +3,12 @@ import { requireOwner } from "@/lib/guards";
 import { money } from "@/lib/auth";
 import { markNotificationRead } from "./actions";
 import Link from "next/link";
+import { agentsFor } from "@/lib/brand";
 
 export default async function OwnerHome() {
   const { tenantId } = await requireOwner();
   const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
+  const agents = agentsFor(tenant.vertical, tenant.name);
   const [appts, customers, invoices, notes, metrics] = await Promise.all([
     prisma.appointment.count({
       where: { tenantId, status: { in: ["CONFIRMED", "PENDING", "RESCHEDULED"] } },
@@ -29,12 +31,12 @@ export default async function OwnerHome() {
     <div className="space-y-8">
       <header>
         <h1 className="font-display text-4xl">{tenant.name}</h1>
-        <p className="text-slate-400 mt-2">
-          Aquí ves reservas, pagos y resúmenes. Pregúntale a Elena cualquier dato de este CRM. Sofía
-          atiende a los clientes.
+        <p className="text-slate-400 mt-2 max-w-2xl leading-relaxed">
+          Reservas, pagos y resúmenes de {tenant.name}. {agents.owner.name} consulta el CRM (voz de hombre).{" "}
+          {agents.client.name} atiende a tus clientes (voz de mujer).
         </p>
         <Link href="/app/asistente" className="btn-gold inline-block mt-4">
-          Preguntar a Elena
+          Hablar con {agents.owner.name}
         </Link>
       </header>
       <div className="grid sm:grid-cols-3 gap-4">
