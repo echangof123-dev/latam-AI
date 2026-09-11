@@ -39,7 +39,6 @@ export function bogotaParts(d: Date) {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    weekday: "short",
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
@@ -48,22 +47,18 @@ export function bogotaParts(d: Date) {
   for (const p of fmt.formatToParts(d)) {
     if (p.type !== "literal") map[p.type] = p.value;
   }
-  const weekday = (map.weekday || "mon").toLowerCase().slice(0, 3);
-  const keyMap: Record<string, string> = {
-    sun: "dom",
-    mon: "lun",
-    tue: "mar",
-    wed: "mie",
-    thu: "jue",
-    fri: "vie",
-    sat: "sab",
-  };
+  const ymd = `${map.year}-${map.month}-${map.day}`;
   return {
-    ymd: `${map.year}-${map.month}-${map.day}`,
+    ymd,
     hour: Number(map.hour),
     minute: Number(map.minute),
-    weekKey: keyMap[weekday] || WEEK[d.getUTCDay()],
+    weekKey: weekKeyFromYmd(ymd),
   };
+}
+
+function weekKeyFromYmd(ymd: string) {
+  const d = new Date(`${ymd}T12:00:00-05:00`);
+  return WEEK[d.getUTCDay()];
 }
 
 /** Interpreta datetime-local como hora de Bogotá (UTC-5). */
@@ -171,19 +166,19 @@ export async function availableSlots(opts: {
   const busyRaw = await loadBusy(opts.tenantId, from, to, opts.staffId);
   const busy = busyRaw.filter((b) => b.id !== opts.ignoreId);
   const slots: { start: Date; end: Date }[] = [];
+  let ymd = bogotaParts(from).ymd;
   for (let i = 0; i < days; i++) {
-    const probe = new Date(from.getTime() + i * 86400000);
-    const p = bogotaParts(probe);
     slots.push(
       ...listSlotsForDay({
-        ymd: p.ymd,
-        weekKey: p.weekKey,
+        ymd,
+        weekKey: weekKeyFromYmd(ymd),
         hours,
         durationMin: service.durationMin,
         busy,
         ignoreId: opts.ignoreId,
       }),
     );
+    ymd = addDaysYmd(ymd, 1);
   }
   return slots.slice(0, 40);
 }
@@ -215,37 +210,21 @@ export async function nextOpenSlot(opts: {
   when?: Date;
   ignoreId?: string;
   durationMin: number;
+  preferStaffId?: string | null;
 }) {
-  const staffRows = opts.staffId
-    ? [{ id: opts.staffId }]
-    : await prisma.staffMember.findMany({
-        where: { tenantId: opts.tenantId, active: true },
-        select: { id: true },
-      });
-  const candidates = staffRows.length ? staffRows : [{ id: undefined as string | undefined }];
+  const staffRows = await prisma.staffMember.findMany({
+    where: { tenantId: opts.tenantId, active: true },
+    select: { id: true },
+  });
+  const preferred = staffRows.find((s) => s.id === opts.staffId || s.id === opts.preferStaffId)?.id;
+  const ordered = preferred
+    ? [{ id: preferred }, ...staffRows.filter((s) => s.id !== preferred)]
+    : staffRows.length
+      ? staffRows
+      : [{ id: undefined as string | undefined }];
 
-  if (opts.when) {
-    const start = opts.when;
-    const end = new Date(start.getTime() + opts.durationMin * 60000);
-    if (start < new Date()) return null;
-    const branch = opts.branchId
-      ? await prisma.branch.findFirst({ where: { id: opts.branchId, tenantId: opts.tenantId } })
-      : await prisma.branch.findFirst({ where: { tenantId: opts.tenantId } });
-    if (!fitsHours(start, end, parseHours(branch?.hoursJson || ""))) return null;
-    for (const s of candidates) {
-      const free = await assertSlotFree({
-        tenantId: opts.tenantId,
-        start,
-        end,
-        staffId: s.id,
-        ignoreId: opts.ignoreId,
-      });
-      if (free) return { start, end, staffId: s.id || null };
-    }
-    return null;
-  }
-
-  for (const s of candidates) {
+  const collected: { start: Date; end: Date; staffId: string | null }[] = [];
+  for (const s of ordered) {
     const slots = await availableSlots({
       tenantId: opts.tenantId,
       serviceId: opts.serviceId,
@@ -253,23 +232,78 @@ export async function nextOpenSlot(opts: {
       branchId: opts.branchId,
       ignoreId: opts.ignoreId,
     });
-    if (slots[0]) return { start: slots[0].start, end: slots[0].end, staffId: s.id || null };
+    for (const slot of slots) {
+      collected.push({ start: slot.start, end: slot.end, staffId: s.id || null });
+    }
   }
-  return null;
+  collected.sort((a, b) => a.start.getTime() - b.start.getTime());
+
+  if (!opts.when) return collected[0] || null;
+
+  const want = bogotaParts(opts.when);
+  const wantMin = want.hour * 60 + want.minute;
+  const sameClock = collected.filter((s) => {
+    const p = bogotaParts(s.start);
+    return p.hour * 60 + p.minute === wantMin;
+  });
+  const onDay = sameClock.find((s) => bogotaParts(s.start).ymd === want.ymd);
+  if (onDay) return onDay;
+  if (sameClock[0]) return sameClock[0];
+
+  const sameDay = collected.filter((s) => bogotaParts(s.start).ymd === want.ymd);
+  const near = sameDay.find((s) => {
+    const p = bogotaParts(s.start);
+    return Math.abs(p.hour * 60 + p.minute - wantMin) <= 15;
+  });
+  return near || null;
+}
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+export function nextClock(hour: number, minute: number, after = new Date()) {
+  const p = bogotaParts(after);
+  let ymd = p.ymd;
+  let at = fromBogotaLocal(`${ymd}T${pad2(hour)}:${pad2(minute)}`);
+  if (at.getTime() <= after.getTime() + 60_000) {
+    ymd = addDaysYmd(ymd, 1);
+    at = fromBogotaLocal(`${ymd}T${pad2(hour)}:${pad2(minute)}`);
+  }
+  return at;
 }
 
 export function parseWhenHint(raw?: string | null) {
   if (!raw) return null;
   const t = raw.trim();
   if (!t || /pr[oó]ximo|cuando sea|primer hueco|antes posible/i.test(t)) return null;
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(t)) return fromBogotaLocal(t);
-  const parsed = Date.parse(t);
-  if (!Number.isNaN(parsed)) return new Date(parsed);
-  return null;
+
+  const iso = t.match(/(\d{4}-\d{2}-\d{2})[T\s](\d{1,2}):(\d{2})/);
+  if (iso) {
+    const at = fromBogotaLocal(`${iso[1]}T${pad2(Number(iso[2]))}:${iso[3]}`);
+    if (at.getTime() <= Date.now() + 60_000) {
+      return nextClock(Number(iso[2]), Number(iso[3]));
+    }
+    return at;
+  }
+
+  const clock = t.match(/(\d{1,2})\s*[:.h]\s*(\d{2})\s*(a\.?\s*m\.?|p\.?\s*m\.?|am|pm)?/i);
+  if (!clock) return null;
+  let hour = Number(clock[1]);
+  const minute = Number(clock[2]);
+  const mer = (clock[3] || "").toLowerCase().replace(/\s/g, "");
+  if (mer.startsWith("p") && hour < 12) hour += 12;
+  if (mer.startsWith("a") && hour === 12) hour = 0;
+  return nextClock(hour, minute);
 }
 
 export function fmtSlots(slots: { start: Date; end: Date }[], limit = 8) {
-  return slots.slice(0, limit).map((s) => fmtRange(s.start)).join("; ") || "sin huecos en los próximos días";
+  return slots.slice(0, limit).map((s) => fmtSlotLine(s.start)).join(" · ") || "sin huecos en los próximos días";
+}
+
+export function fmtSlotLine(d: Date) {
+  const p = bogotaParts(d);
+  return `${fmtRange(d)} [cuando=${p.ymd}T${pad2(p.hour)}:${pad2(p.minute)}]`;
 }
 
 export function fmtRange(d: Date) {

@@ -49,7 +49,7 @@ const tools = [
     function: {
       name: "agendar",
       description:
-        "Crea una reserva en un hueco libre. Si no hay hora, usa el primer hueco. cuando en hora de Bogotá: 2026-09-15T10:00",
+        "Crea una reserva en un hueco libre. cuando puede ser 09:15 o 2026-09-11T09:15 (Bogotá). Si el cliente elige un hueco que listaste, usa ese cuando y confirma solo si la herramienta dice Confirmado.",
       parameters: {
         type: "object",
         properties: {
@@ -74,7 +74,8 @@ const tools = [
     type: "function" as const,
     function: {
       name: "reprogramar_cita",
-      description: "Mueve la cita activa a otro hueco libre (cuando opcional, formato 2026-09-15T10:00).",
+      description:
+        "Mueve la cita activa. cuando puede ser 09:15 o 2026-09-11T09:15. Si el cliente elige un hueco listado, reprograma con esa hora. No digas ocupado si la herramienta devolvió Reprogramé o una lista de huecos LIBRES.",
       parameters: {
         type: "object",
         properties: { cuando: { type: "string" } },
@@ -154,7 +155,10 @@ export async function generateReply(opts: {
       role: "system",
       content: `Eres Sofía, recepcionista de ${opts.tenant.name}. Hablas español latino, cálida y breve (2 a 6 frases).
 Solo usas la información del negocio. Si no está en los datos, dilo y no inventes precios ni horarios.
-Puedes consultar disponibilidad, agendar, cancelar y reprogramar. Nunca confirmes un horario si la herramienta dice que no hay hueco. El dueño no ve este chat.
+Para agendar o cambiar cita SIEMPRE usa las herramientas. Los huecos que devuelve ver_disponibilidad están LIBRES: no los marques ocupados.
+Si el cliente dice una hora (ej. 09:15), llama reprogramar_cita o agendar con cuando= esa hora; no hace falta el día si no lo dijo.
+Si la herramienta dice Confirmado o Reprogramé, confirma esa fecha/hora al cliente (incluye el día).
+Nunca confirmes un horario si la herramienta no lo confirmó. El dueño no ve este chat.
 Datos actuales del negocio:\n${knowledge}`,
     },
     ...chronological.map((m) => ({

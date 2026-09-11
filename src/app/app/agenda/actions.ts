@@ -64,17 +64,34 @@ export async function rescheduleReservation(formData: FormData) {
   if (!appt || !when) return;
   const start = fromBogotaLocal(when);
   const end = new Date(start.getTime() + appt.service.durationMin * 60000);
-  const free = await assertSlotFree({
-    tenantId,
-    start,
-    end,
-    staffId: appt.staffId,
-    ignoreId: appt.id,
+  const team = await prisma.staffMember.findMany({
+    where: { tenantId, active: true },
+    select: { id: true },
   });
+  const order = [
+    ...(appt.staffId ? [{ id: appt.staffId }] : []),
+    ...team.filter((s) => s.id !== appt.staffId),
+    { id: null as string | null },
+  ];
+  let staffId = appt.staffId;
+  let free = false;
+  for (const s of order) {
+    free = await assertSlotFree({
+      tenantId,
+      start,
+      end,
+      staffId: s.id,
+      ignoreId: appt.id,
+    });
+    if (free) {
+      staffId = s.id;
+      break;
+    }
+  }
   if (!free) return;
   await prisma.appointment.update({
     where: { id: appt.id },
-    data: { startsAt: start, endsAt: end, status: "RESCHEDULED" },
+    data: { startsAt: start, endsAt: end, status: "RESCHEDULED", staffId },
   });
   bounce();
 }
