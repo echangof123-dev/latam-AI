@@ -22,13 +22,13 @@ export default async function ChatPage() {
     .sort((a, b) => Number(b.phone.includes("555")) - Number(a.phone.includes("555")));
 
   return (
-    <main className="min-h-screen max-w-3xl mx-auto p-6 space-y-6">
+    <main className="min-h-screen max-w-4xl mx-auto p-6 space-y-6">
       <header className="flex items-end justify-between gap-4">
         <div>
           <p className="text-gold-400 font-semibold">Eje Uno</p>
           <h1 className="font-display text-4xl mt-1">Habla con Sofía</h1>
           <p className="text-slate-400 mt-2">
-            Texto y voz aquí; en WhatsApp también entiende notas de audio y responde hablado.
+            Avatar 3D con gestos, voz y reservas. En WhatsApp también responde notas de audio.
           </p>
         </div>
         <Link href="/login" className="btn-ghost text-sm">

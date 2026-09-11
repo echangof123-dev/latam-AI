@@ -29,7 +29,7 @@ export default async function Home() {
             Agenda profesional y una recepcionista que atiende sola.
           </h1>
           <p className="mt-5 text-lg text-slate-300 max-w-xl">
-            Sofía responde por texto, voz y notas de audio en WhatsApp. El dueño ve el calendario, huecos y avisos — no las charlas.
+            Sofía aparece en 3D, habla y gesticula. Responde por chat, voz y notas de audio en WhatsApp. El dueño ve el calendario, no las charlas.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/chat" className="btn-gold text-lg px-6 py-3">

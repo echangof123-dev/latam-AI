@@ -1,6 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { AvatarMood } from "./sofia-avatar-3d";
+
+const SofiaAvatar3D = dynamic(() => import("./sofia-avatar-3d").then((m) => m.SofiaAvatar3D), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[320px] w-full rounded-t-[1.6rem] bg-[#0b1220] flex items-center justify-center text-slate-500 text-sm">
+      Cargando a Sofía…
+    </div>
+  ),
+});
 
 type Biz = { name: string; phone: string };
 
@@ -12,6 +23,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [level, setLevel] = useState(0);
   const [fromPhone] = useState(() => {
     if (typeof window === "undefined") return "+573100000001";
     const key = "ejeuno_web_phone";
@@ -29,17 +41,33 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
   ]);
   const box = useRef<HTMLDivElement>(null);
   const recRef = useRef<{ start: () => void; stop: () => void } | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const levelTimer = useRef<number | null>(null);
 
   const bizName = useMemo(
     () => businesses.find((b) => b.phone === to)?.name || "el negocio",
     [businesses, to],
   );
 
+  const mood: AvatarMood = speaking ? "talk" : listening ? "listen" : "idle";
+
   useEffect(() => {
     box.current?.scrollTo({ top: box.current.scrollHeight, behavior: "smooth" });
   }, [msgs]);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    if (!speaking) {
+      setLevel(0);
+      if (levelTimer.current) window.clearInterval(levelTimer.current);
+      return;
+    }
+    levelTimer.current = window.setInterval(() => {
+      setLevel(0.35 + Math.random() * 0.65);
+    }, 90);
+    return () => {
+      if (levelTimer.current) window.clearInterval(levelTimer.current);
+    };
+  }, [speaking]);
 
   function playOpenAiVoice(src: string, fallback: string) {
     if (typeof window === "undefined") return;
@@ -105,8 +133,9 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
   }
 
   function toggleMic() {
-    const SR = (window as unknown as { SpeechRecognition?: new () => BrowserRecog; webkitSpeechRecognition?: new () => BrowserRecog })
-      .SpeechRecognition ||
+    const SR =
+      (window as unknown as { SpeechRecognition?: new () => BrowserRecog; webkitSpeechRecognition?: new () => BrowserRecog })
+        .SpeechRecognition ||
       (window as unknown as { webkitSpeechRecognition?: new () => BrowserRecog }).webkitSpeechRecognition;
     if (!SR) {
       alert("Este navegador no permite dictado. Usa Chrome o Edge, o escribe el mensaje.");
@@ -132,17 +161,15 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
 
   return (
     <div className="card overflow-hidden p-0">
-      <div className="bg-gradient-to-r from-ink-900 to-[#152238] px-6 py-5 flex items-center gap-4">
-        <div className={`relative h-20 w-20 rounded-full overflow-hidden border-2 border-gold-500 ${speaking ? "avatar-talk" : ""}`}>
-          <img src="/sofia.png" alt="Sofía, recepcionista" className="h-full w-full object-cover" />
-        </div>
+      <SofiaAvatar3D mood={mood} level={level} />
+      <div className="px-6 py-4 flex items-center justify-between gap-3 border-b border-white/10">
         <div>
           <p className="text-xl font-semibold">Sofía</p>
           <p className="text-sm text-slate-400">Recepcionista de {bizName}</p>
-          <p className="text-xs text-emerald-400 mt-1">
-            {speaking ? "Hablando…" : listening ? "Te escucho…" : "Lista · voz y reservas"}
-          </p>
         </div>
+        <p className="text-xs text-emerald-400">
+          {speaking ? "Hablando…" : listening ? "Te escucho…" : "En línea · 3D"}
+        </p>
       </div>
 
       {businesses.length > 1 ? (
@@ -158,7 +185,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
         </div>
       ) : null}
 
-      <div ref={box} className="h-[340px] overflow-y-auto px-6 py-4 space-y-3">
+      <div ref={box} className="h-[280px] overflow-y-auto px-6 py-4 space-y-3">
         {msgs.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <p
