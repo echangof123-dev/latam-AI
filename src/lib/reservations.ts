@@ -179,6 +179,11 @@ export async function availableSlots(opts: {
     ? await prisma.branch.findFirst({ where: { id: opts.branchId, tenantId: opts.tenantId } })
     : await prisma.branch.findFirst({ where: { tenantId: opts.tenantId } });
   const hours = parseHours(branch?.hoursJson || "");
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: opts.tenantId },
+    select: { slotMin: true },
+  });
+  const stepMin = Math.max(5, branch?.slotMin || tenant?.slotMin || 15);
   const days = Math.min(opts.days || 14, 21);
   const from = new Date();
   const to = new Date(from.getTime() + days * 86400000);
@@ -193,6 +198,7 @@ export async function availableSlots(opts: {
         weekKey: weekKeyFromYmd(ymd),
         hours,
         durationMin: service.durationMin,
+        stepMin,
         busy,
         ignoreId: opts.ignoreId,
       }),

@@ -6,7 +6,13 @@ async function main() {
   await prisma.$executeRawUnsafe(
     'ALTER TABLE "PhoneNumber" ADD COLUMN IF NOT EXISTS "whatsappPhoneNumberId" TEXT',
   );
-  console.log("Columna WhatsApp OK");
+  await prisma.$executeRawUnsafe(
+    'ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "slotMin" INTEGER NOT NULL DEFAULT 15',
+  );
+  await prisma.$executeRawUnsafe(
+    'ALTER TABLE "Branch" ADD COLUMN IF NOT EXISTS "slotMin" INTEGER NOT NULL DEFAULT 15',
+  );
+  console.log("Columnas CRM / intervalo OK");
 }
 
 main()

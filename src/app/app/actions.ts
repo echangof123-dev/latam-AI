@@ -42,12 +42,14 @@ export async function createBranch(formData: FormData) {
   const { tenantId } = await requireOwner();
   const name = String(formData.get("name") || "").trim();
   const address = String(formData.get("address") || "").trim();
+  const slotMin = Math.max(5, Number(formData.get("slotMin") || 15));
   if (!name) return;
   await prisma.branch.create({
     data: {
       tenantId,
       name,
       address,
+      slotMin,
       hoursJson: JSON.stringify({
         lun: ["09:00-18:00"],
         mar: ["09:00-18:00"],
@@ -65,6 +67,7 @@ export async function createBranch(formData: FormData) {
 export async function updateBranchHours(formData: FormData) {
   const { tenantId } = await requireOwner();
   const id = String(formData.get("id") || "");
+  const slotMin = Math.max(5, Number(formData.get("slotMin") || 15));
   const keys = ["lun", "mar", "mie", "jue", "vie", "sab", "dom"] as const;
   const hours: Record<string, string[]> = {};
   for (const k of keys) {
@@ -73,10 +76,34 @@ export async function updateBranchHours(formData: FormData) {
   }
   await prisma.branch.updateMany({
     where: { id, tenantId },
-    data: { hoursJson: JSON.stringify(hours) },
+    data: { hoursJson: JSON.stringify(hours), slotMin },
   });
   revalidatePath("/app/sucursales");
+  revalidatePath("/app/parametros");
   revalidatePath("/app/agenda");
+}
+
+export async function updateTenantInterval(formData: FormData) {
+  const { tenantId } = await requireOwner();
+  const slotMin = Math.max(5, Number(formData.get("slotMin") || 15));
+  await prisma.tenant.update({ where: { id: tenantId }, data: { slotMin } });
+  await prisma.branch.updateMany({ where: { tenantId }, data: { slotMin } });
+  revalidatePath("/app/parametros");
+  revalidatePath("/app/agenda");
+}
+
+export async function updateService(formData: FormData) {
+  const { tenantId } = await requireOwner();
+  const id = String(formData.get("id") || "");
+  const durationMin = Math.max(5, Number(formData.get("durationMin") || 30));
+  const priceCents = Number(formData.get("priceCents") || 0);
+  const name = String(formData.get("name") || "").trim();
+  await prisma.service.updateMany({
+    where: { id, tenantId },
+    data: { durationMin, priceCents, ...(name ? { name } : {}) },
+  });
+  revalidatePath("/app/servicios");
+  revalidatePath("/app/parametros");
 }
 
 export async function markNotificationRead(formData: FormData) {

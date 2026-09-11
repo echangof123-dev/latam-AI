@@ -20,11 +20,12 @@ export default async function SucursalesPage() {
     <div className="space-y-6">
       <h1 className="font-display text-4xl">Sucursales y horarios</h1>
       <p className="text-slate-400 text-sm">
-        El calendario de reservas usa estos horarios para calcular disponibilidad.
+        El calendario y Sofía usan estos horarios. También puedes editarlos en Parametrización.
       </p>
-      <form action={createBranch} className="card grid md:grid-cols-3 gap-3">
+      <form action={createBranch} className="card grid md:grid-cols-4 gap-3">
         <input name="name" placeholder="Sede" required />
         <input name="address" placeholder="Dirección" />
+        <input name="slotMin" type="number" min={5} defaultValue={15} placeholder="Intervalo min" />
         <button className="rounded-lg bg-gold-500 text-ink-950 font-semibold">Añadir</button>
       </form>
       <div className="space-y-4">
@@ -37,6 +38,10 @@ export default async function SucursalesPage() {
                 <p className="font-medium">{b.name}</p>
                 <p className="text-sm text-slate-400">{b.address}</p>
               </div>
+              <label className="block space-y-1 max-w-xs">
+                <span>Intervalo (min)</span>
+                <input name="slotMin" type="number" min={5} defaultValue={b.slotMin || 15} />
+              </label>
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {DAYS.map(([key, label]) => (
                   <label key={key} className="block space-y-1">

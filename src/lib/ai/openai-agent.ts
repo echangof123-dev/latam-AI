@@ -1,10 +1,11 @@
 import { prisma } from "../db";
 import type { Channel } from "@prisma/client";
-import { businessKnowledge } from "./knowledge";
+import { businessKnowledge, crmBusyWindow } from "./knowledge";
 import {
   bookAppointment,
   cancelAppointment,
   ensureCustomer,
+  fmt,
   listAvailability,
   rescheduleAppointment,
 } from "./booking";
@@ -35,8 +36,21 @@ const tools = [
   {
     type: "function" as const,
     function: {
+      name: "consultar_crm",
+      description: "Consulta el CRM: cliente por nombre/teléfono o citas ya agendadas que ocupan la agenda.",
+      parameters: {
+        type: "object",
+        properties: {
+          busqueda: { type: "string", description: "nombre, teléfono o la palabra agenda" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "ver_disponibilidad",
-      description: "Lista huecos libres según horario de sede y citas ya ocupadas.",
+      description: "Lista huecos libres según horario de sede y citas ya ocupadas en el CRM.",
       parameters: {
         type: "object",
         properties: { servicio: { type: "string" } },
@@ -170,7 +184,8 @@ export async function generateReply(opts: {
         role: "system",
         content: `Eres Sofía, una recepcionista humana de ${opts.tenant.name}. No eres un bot rígido: hablas como una persona real, cálida, de Latinoamérica.
 Tratas a la gente de usted o tú según el tono de ellos. Usas el nombre si lo conoces. Una idea por frase, 2 a 5 frases. Puedes empatizar un segundo (“claro”, “con gusto”) y luego ir al grano.
-SOLO usas la ficha de ESTE negocio. Si te preguntan de otro local, precios o horarios que no estén abajo, di que no lo tienes a la mano. Nunca inventes.
+SOLO usas la ficha CRM de ESTE negocio (horarios, intervalo, servicios, clientes y citas ya agendadas). Nunca pises una cita ocupada: usa ver_disponibilidad y consultar_crm.
+Si te preguntan de otro local o un dato que no esté en el CRM, di que no lo tienes. Nunca inventes.
 Cuando hablen de citas, usa las herramientas. Si listan huecos, esos están libres. Si confirman una hora, agéndala o reprogramala.
 No enumeres la ficha completa: responde lo que preguntaron, como lo haría alguien en el mostrador.
 El dueño no ve este chat.
@@ -242,6 +257,44 @@ async function runTool(
   if (name === "guardar_cliente") {
     const c = await ensureCustomer(opts.tenant.id, opts.from, args.nombre);
     return c ? `Cliente guardado: ${c.name}` : "Falta el nombre.";
+  }
+  if (name === "consultar_crm") {
+    const q = (args.busqueda || "").trim().toLowerCase();
+    if (!q || q === "agenda") {
+      const busy = await crmBusyWindow(opts.tenant.id, 4);
+      if (!busy.length) return "CRM: no hay citas vigentes en los próximos días.";
+      return (
+        "Citas ya agendadas en CRM (ocupadas): " +
+        busy
+          .map((a) => `${fmt(a.startsAt)} ${a.customer.name} · ${a.service.name} · ${a.staff?.name || "—"}`)
+          .join(" | ")
+      );
+    }
+    const rows = await prisma.customer.findMany({
+      where: {
+        tenantId: opts.tenant.id,
+        OR: [{ name: { contains: q, mode: "insensitive" } }, { phone: { contains: q.replace(/\D/g, "") } }],
+      },
+      include: {
+        appointments: {
+          where: { status: { in: ["CONFIRMED", "PENDING", "RESCHEDULED"] } },
+          include: { service: true },
+          orderBy: { startsAt: "asc" },
+          take: 5,
+        },
+      },
+      take: 8,
+    });
+    if (!rows.length) return `CRM: no encontré cliente con “${args.busqueda}”.`;
+    return rows
+      .map(
+        (c) =>
+          `${c.name} ${c.phone}` +
+          (c.appointments.length
+            ? " · citas: " + c.appointments.map((a) => `${a.service.name} ${fmt(a.startsAt)}`).join(", ")
+            : " · sin cita vigente"),
+      )
+      .join(" | ");
   }
   if (name === "ver_disponibilidad") return listAvailability(opts.tenant, args.servicio || "");
   if (name === "agendar") {

@@ -1,6 +1,6 @@
 import { prisma } from "../db";
 import type { Channel } from "@prisma/client";
-import { availableSlotsAnyStaff, fmtSlotLine, nextOpenSlot, parseWhenHint } from "../reservations";
+import { availableSlotsAnyStaff, fmtRange, fmtSlotLine, nextOpenSlot, parseWhenHint } from "../reservations";
 
 export function fmt(d: Date) {
   return fmtRange(d);

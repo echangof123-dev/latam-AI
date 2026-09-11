@@ -78,6 +78,7 @@ model Tenant {
   vertical     Vertical       @default(GENERIC)
   timezone     String         @default("America/Bogota")
   locale       String         @default("es")
+  slotMin      Int            @default(15)
   active       Boolean        @default(true)
   createdAt    DateTime       @default(now())
   modules      TenantModule[]
@@ -124,6 +125,7 @@ model Branch {
   address      String
   phone        String?
   hoursJson    String
+  slotMin      Int            @default(15)
   tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointments Appointment[]
 }

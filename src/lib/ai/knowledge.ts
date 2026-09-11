@@ -1,7 +1,23 @@
 import { prisma } from "../db";
 import { VERTICAL_LABEL } from "../modules";
-import { formatHoursHuman } from "../reservations";
+import { formatHoursHuman, fmtRange } from "../reservations";
 import { fmt } from "./booking";
+
+export async function crmBusyWindow(tenantId: string, days = 3) {
+  const from = new Date();
+  const to = new Date(from.getTime() + days * 86400000);
+  return prisma.appointment.findMany({
+    where: {
+      tenantId,
+      status: { in: ["CONFIRMED", "PENDING", "RESCHEDULED"] },
+      startsAt: { lt: to },
+      endsAt: { gt: from },
+    },
+    include: { customer: true, service: true, staff: true },
+    orderBy: { startsAt: "asc" },
+    take: 30,
+  });
+}
 
 export async function businessKnowledge(tenantId: string, customerPhone: string) {
   const tenant = await prisma.tenant.findUnique({
@@ -26,46 +42,59 @@ export async function businessKnowledge(tenantId: string, customerPhone: string)
     minute: "2-digit",
   });
 
-  const customer = await prisma.customer.findUnique({
-    where: { tenantId_phone: { tenantId, phone: customerPhone } },
-    include: {
-      appointments: {
-        where: { status: { in: ["CONFIRMED", "PENDING", "RESCHEDULED"] } },
-        include: { service: true, staff: true },
-        orderBy: { startsAt: "asc" },
-        take: 5,
+  const [customer, busy] = await Promise.all([
+    prisma.customer.findUnique({
+      where: { tenantId_phone: { tenantId, phone: customerPhone } },
+      include: {
+        appointments: {
+          where: { status: { in: ["CONFIRMED", "PENDING", "RESCHEDULED"] } },
+          include: { service: true, staff: true },
+          orderBy: { startsAt: "asc" },
+          take: 5,
+        },
       },
-    },
-  });
+    }),
+    crmBusyWindow(tenantId, 3),
+  ]);
+
+  const slot = tenant.slotMin || tenant.branches[0]?.slotMin || 15;
 
   const lines = [
-    `Trabajas SOLO para este negocio: ${tenant.name}.`,
+    `Trabajas SOLO para este negocio (CRM): ${tenant.name}.`,
     `Ahora mismo: ${now} (${tenant.timezone}).`,
+    `Intervalo de atención (grilla de agenda): cada ${slot} minutos.`,
     `Rubro: ${VERTICAL_LABEL[tenant.vertical] || tenant.vertical}`,
-    `Teléfonos: ${tenant.phones.map((p) => `${p.e164} (${p.label})`).join("; ") || "—"}`,
-    "Sucursales y horarios de atención:",
+    "Sucursales y horarios (parametrizados):",
     ...tenant.branches.map(
-      (b) => `- ${b.name}, ${b.address}. ${formatHoursHuman(b.hoursJson)}`,
+      (b) =>
+        `- ${b.name}, ${b.address}. Intervalo ${b.slotMin || slot} min. ${formatHoursHuman(b.hoursJson)}`,
     ),
-    "Servicios, duración y precios en pesos colombianos:",
+    "Servicios del catálogo CRM:",
     ...tenant.services.map(
-      (s) => `- ${s.name}: $${s.priceCents.toLocaleString("es-CO")} · ${s.durationMin} minutos`,
+      (s) => `- ${s.name}: $${s.priceCents.toLocaleString("es-CO")} · dura ${s.durationMin} min`,
     ),
-    "Equipo que atiende:",
+    "Equipo:",
     ...tenant.staff.map((s) => `- ${s.name} (${s.roleTitle})`),
     "Políticas:",
     ...tenant.policies.map((p) => `- ${p.key}: ${p.value}`),
-    tenant.inventory.length ? "Inventario (si preguntan):" : "",
-    ...tenant.inventory.slice(0, 20).map((i) => `- ${i.name}: ${i.qty} uds`),
+    "Citas YA agendadas (ocupan agenda, no las pises):",
+    busy.length
+      ? busy
+          .map(
+            (a) =>
+              `- ${fmt(a.startsAt)}–${fmtRange(a.endsAt)} ${a.customer.name} · ${a.service.name} · ${a.staff?.name || "sin asignar"}`,
+          )
+          .join("\n")
+      : "- ninguna vigente en los próximos días",
     customer
-      ? `Cliente de este chat: ${customer.name}, ${customer.phone}${customer.notes ? `. Notas: ${customer.notes}` : ""}`
-      : "Aún no tienes el nombre de esta persona.",
+      ? `Cliente de este chat en CRM: ${customer.name}, ${customer.phone}${customer.notes ? `. Notas: ${customer.notes}` : ""}`
+      : "Este teléfono aún no está en el CRM de clientes.",
     customer?.appointments.length
-      ? "Citas vigentes de esta persona: " +
+      ? "Citas de ESTA persona: " +
         customer.appointments
           .map((a) => `${a.service.name} el ${fmt(a.startsAt)} con ${a.staff?.name || "el equipo"}`)
           .join("; ")
-      : "Esta persona no tiene cita vigente.",
+      : "Esta persona no tiene cita vigente en el CRM.",
   ];
 
   return lines.filter(Boolean).join("\n");

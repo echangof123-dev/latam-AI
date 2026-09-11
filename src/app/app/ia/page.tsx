@@ -17,9 +17,14 @@ export default async function IaPage() {
         Sofía atiende por chat, voz y WhatsApp (texto y notas de audio). Aquí no ves las charlas: solo
         reservas y resultados.
       </p>
-      <Link href="/chat" className="btn-gold inline-block">
-        Hablar con Sofía ahora
-      </Link>
+      <div className="flex flex-wrap gap-3">
+        <Link href="/chat" className="btn-gold inline-block">
+          Hablar con Sofía ahora
+        </Link>
+        <Link href="/app/parametros" className="btn-ghost inline-block">
+          Parametrizar horario
+        </Link>
+      </div>
       <div className="card">
         <h2 className="font-semibold mb-2">Números asignados</h2>
         <ul className="text-sm space-y-1">
