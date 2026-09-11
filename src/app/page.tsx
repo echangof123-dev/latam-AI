@@ -29,7 +29,7 @@ export default async function Home() {
             Agenda profesional y una recepcionista que atiende sola.
           </h1>
           <p className="mt-5 text-lg text-slate-300 max-w-xl">
-            Sofía aparece en 3D, habla y gesticula. Responde por chat, voz y notas de audio en WhatsApp. El dueño ve el calendario, no las charlas.
+            Sofía es una IA generativa: responde con los datos del negocio y agenda sola. El dueño ve el calendario, no las charlas.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/chat" className="btn-gold text-lg px-6 py-3">
@@ -41,17 +41,19 @@ export default async function Home() {
           </div>
           <ul className="mt-8 grid sm:grid-cols-3 gap-3 text-sm text-slate-400">
             <li className="card py-4">Calendario y disponibilidad</li>
-            <li className="card py-4">Voz en el chat y WhatsApp</li>
+            <li className="card py-4">IA generativa</li>
             <li className="card py-4">Reprogramar, cancelar, no-show</li>
           </ul>
         </div>
-        <div className="relative">
-          <div className="absolute -inset-6 rounded-[2.5rem] bg-gold-500/10 blur-2xl" />
-          <img
-            src="/sofia.png"
-            alt="Sofía, recepcionista de Eje Uno"
-            className="relative rounded-[2rem] border border-white/10 w-full max-w-md mx-auto object-cover shadow-2xl"
-          />
+        <div className="card space-y-4">
+          <p className="text-gold-400 text-sm font-semibold">Sofía</p>
+          <p className="text-2xl font-display">Recepcionista IA</p>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            Entiende en español, consulta el catálogo y deja la cita en la agenda. Sin avatar: solo la conversación.
+          </p>
+          <Link href="/chat" className="btn-gold inline-block">
+            Empezar a chatear
+          </Link>
         </div>
       </section>
     </main>

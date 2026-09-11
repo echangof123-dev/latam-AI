@@ -19,14 +19,13 @@ async function LoginInner({
       <section className="hidden lg:flex flex-col justify-between p-12 border-r border-white/10">
         <p className="font-display text-3xl text-gold-400">Eje Uno</p>
         <div>
-          <img src="/sofia.png" alt="" className="h-40 w-40 rounded-full object-cover border-2 border-gold-500 mb-8" />
           <h1 className="font-display text-5xl leading-tight max-w-md">Reservas, calendario y Sofía en un solo panel.</h1>
           <p className="mt-6 max-w-md text-slate-300 text-lg">
-            El dueño gestiona la agenda. Sofía atiende por chat, voz y notas de audio de WhatsApp.
+            El dueño gestiona la agenda. Sofía atiende con IA generativa por chat y WhatsApp.
           </p>
         </div>
         <Link href="/chat" className="text-gold-400 hover:underline">
-          ← Hablar con Sofía (texto y voz)
+          ← Hablar con Sofía
         </Link>
       </section>
       <section className="flex items-center justify-center p-8">

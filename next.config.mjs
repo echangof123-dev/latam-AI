@@ -1,5 +1,4 @@
 const nextConfig = {
-  transpilePackages: ["three", "@react-three/fiber"],
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
   experimental: {

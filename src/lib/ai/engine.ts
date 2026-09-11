@@ -66,10 +66,7 @@ export async function handleInbound(input: Inbound) {
     data: { conversationId: conversation.id, role: "assistant", body: reply },
   });
 
-  const audio =
-    input.wantAudio || channel === "WEB" || channel === "VOICE_CALL"
-      ? await synthesizeVoice(reply)
-      : null;
+  const audio = input.wantAudio ? await synthesizeVoice(reply) : null;
 
   return { reply, tenantName: tenant.name, tenantId: tenant.id, audio };
 }

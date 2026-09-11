@@ -1,20 +1,8 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { AvatarMood } from "./sofia-avatar-3d";
-
-const SofiaAvatar3D = dynamic(() => import("./sofia-avatar-3d").then((m) => m.SofiaAvatar3D), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[320px] w-full rounded-t-[1.6rem] bg-[#0b1220] flex items-center justify-center text-slate-500 text-sm">
-      Cargando a Sofía…
-    </div>
-  ),
-});
 
 type Biz = { name: string; phone: string };
-
 type Msg = { role: "user" | "ai"; text: string };
 
 export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
@@ -22,8 +10,6 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
-  const [level, setLevel] = useState(0);
   const [fromPhone] = useState(() => {
     if (typeof window === "undefined") return "+573100000001";
     const key = "ejeuno_web_phone";
@@ -36,76 +22,28 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       role: "ai",
-      text: "Hola, soy Sofía, la recepcionista. Puedes escribirme o pulsar el micrófono y hablar.",
+      text: "Hola, soy Sofía. Pregúntame por precios, horarios o una reserva.",
     },
   ]);
   const box = useRef<HTMLDivElement>(null);
   const recRef = useRef<{ start: () => void; stop: () => void } | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const levelTimer = useRef<number | null>(null);
 
   const bizName = useMemo(
     () => businesses.find((b) => b.phone === to)?.name || "el negocio",
     [businesses, to],
   );
 
-  const mood: AvatarMood = speaking ? "talk" : listening ? "listen" : "idle";
-
   useEffect(() => {
     box.current?.scrollTo({ top: box.current.scrollHeight, behavior: "smooth" });
   }, [msgs]);
 
-  useEffect(() => {
-    if (!speaking) {
-      setLevel(0);
-      if (levelTimer.current) window.clearInterval(levelTimer.current);
-      return;
-    }
-    levelTimer.current = window.setInterval(() => {
-      setLevel(0.35 + Math.random() * 0.65);
-    }, 90);
-    return () => {
-      if (levelTimer.current) window.clearInterval(levelTimer.current);
-    };
-  }, [speaking]);
-
-  function playOpenAiVoice(src: string, fallback: string) {
-    if (typeof window === "undefined") return;
-    window.speechSynthesis?.cancel();
-    audioRef.current?.pause();
-    const audio = new Audio(src);
-    audioRef.current = audio;
-    audio.onplay = () => setSpeaking(true);
-    audio.onended = () => setSpeaking(false);
-    audio.onerror = () => {
-      setSpeaking(false);
-      speak(fallback);
-    };
-    void audio.play();
-  }
-
-  function speak(phrase: string) {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(phrase);
-    u.lang = "es-CO";
-    u.rate = 1;
-    const voices = window.speechSynthesis.getVoices();
-    const es = voices.find((v) => v.lang.startsWith("es"));
-    if (es) u.voice = es;
-    u.onstart = () => setSpeaking(true);
-    u.onend = () => setSpeaking(false);
-    window.speechSynthesis.speak(u);
-  }
-
-  async function send(raw: string, channel: "WEB" | "VOICE_CALL" = "WEB") {
+  async function send(raw: string) {
     const clean = raw.trim();
-    if (!clean) return;
+    if (!clean || busy) return;
     if (!to) {
       setMsgs((m) => [...m, { role: "ai", text: "Elige un negocio arriba y vuelve a enviar." }]);
       return;
     }
-    if (busy) return;
     setBusy(true);
     setMsgs((m) => [...m, { role: "user", text: clean }]);
     setText("");
@@ -113,18 +51,13 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
       const res = await fetch("/api/channels/inbound", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, from: fromPhone, text: clean, channel, wantAudio: true }),
+        body: JSON.stringify({ to, from: fromPhone, text: clean, channel: "WEB", wantAudio: false }),
       });
       const data = await res.json().catch(() => null);
       const reply =
         data?.reply ||
         (res.ok ? "No pude responder ahora." : "El servidor no respondió. Espera un minuto y reintenta.");
       setMsgs((m) => [...m, { role: "ai", text: reply }]);
-      if (data?.audio) {
-        playOpenAiVoice(data.audio, reply);
-      } else {
-        speak(reply);
-      }
     } catch {
       setMsgs((m) => [...m, { role: "ai", text: "Hay un problema de conexión. Intenta otra vez." }]);
     } finally {
@@ -138,7 +71,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
         .SpeechRecognition ||
       (window as unknown as { webkitSpeechRecognition?: new () => BrowserRecog }).webkitSpeechRecognition;
     if (!SR) {
-      alert("Este navegador no permite dictado. Usa Chrome o Edge, o escribe el mensaje.");
+      alert("Este navegador no permite dictado. Usa Chrome o Edge, o escribe.");
       return;
     }
     if (listening && recRef.current) {
@@ -150,8 +83,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
     rec.lang = "es-CO";
     rec.interimResults = false;
     rec.onresult = (ev: { results: { 0: { 0: { transcript: string } } } }) => {
-      const said = ev.results[0][0].transcript;
-      void send(said, "VOICE_CALL");
+      void send(ev.results[0][0].transcript);
     };
     rec.onend = () => setListening(false);
     recRef.current = rec;
@@ -161,15 +93,10 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
 
   return (
     <div className="card overflow-hidden p-0">
-      <SofiaAvatar3D mood={mood} level={level} />
-      <div className="px-6 py-4 flex items-center justify-between gap-3 border-b border-white/10">
-        <div>
-          <p className="text-xl font-semibold">Sofía</p>
-          <p className="text-sm text-slate-400">Recepcionista de {bizName}</p>
-        </div>
-        <p className="text-xs text-emerald-400">
-          {speaking ? "Hablando…" : listening ? "Te escucho…" : "En línea · 3D"}
-        </p>
+      <div className="px-6 py-5 border-b border-white/10">
+        <p className="text-xl font-semibold">Sofía</p>
+        <p className="text-sm text-slate-400">Recepcionista IA de {bizName}</p>
+        <p className="text-xs text-emerald-400 mt-1">{busy ? "Pensando…" : listening ? "Te escucho…" : "En línea"}</p>
       </div>
 
       {businesses.length > 1 ? (
@@ -185,7 +112,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
         </div>
       ) : null}
 
-      <div ref={box} className="h-[280px] overflow-y-auto px-6 py-4 space-y-3">
+      <div ref={box} className="h-[380px] overflow-y-auto px-6 py-4 space-y-3">
         {msgs.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <p
@@ -203,7 +130,6 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
         className="border-t border-white/10 p-4 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          e.stopPropagation();
           void send(text);
         }}
       >
@@ -222,7 +148,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
           disabled={busy}
         />
         <button type="submit" className="btn-gold" disabled={busy}>
-          Enviar
+          {busy ? "…" : "Enviar"}
         </button>
       </form>
     </div>

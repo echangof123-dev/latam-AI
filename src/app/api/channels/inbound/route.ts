@@ -3,6 +3,7 @@ import { handleInbound } from "@/lib/ai/engine";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const Body = z.object({
   to: z.string().min(5),
