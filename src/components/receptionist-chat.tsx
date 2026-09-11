@@ -91,10 +91,10 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
       const data = await res.json().catch(() => null);
       const reply =
         data?.reply ||
-        (res.ok ? "No pude responder ahora." : "El servidor no respondió. Espera un minuto y reintenta.");
+        "Soy Sofía. Ahora mismo no pude completar la respuesta. ¿Lo intentamos otra vez?";
       setMsgs((m) => [...m, { role: "ai", text: reply }]);
       setBusy(false);
-      void speakHuman(reply);
+      if (data?.reply) void speakHuman(reply);
       return;
     } catch {
       setMsgs((m) => [...m, { role: "ai", text: "Hay un problema de conexión. Intenta otra vez." }]);

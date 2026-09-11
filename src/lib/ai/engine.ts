@@ -43,7 +43,11 @@ export async function handleInbound(input: Inbound) {
     conversation = await prisma.conversation.create({
       data: { tenantId: tenant.id, customerPhone: input.from, channel },
     });
-    await bump(tenant.id, "conversations");
+    try {
+      await bump(tenant.id, "conversations");
+    } catch {
+      /* no bloquear el chat */
+    }
   }
 
   await prisma.message.create({
@@ -54,13 +58,19 @@ export async function handleInbound(input: Inbound) {
     where: { tenantId_phone: { tenantId: tenant.id, phone: input.from } },
   });
 
-  let reply =
-    (await generateReply({
-      tenant,
-      from: input.from,
-      channel,
-      conversationId: conversation.id,
-    })) || (await decide({ tenant, text, customer, from: input.from, channel }));
+  let reply = "";
+  try {
+    reply =
+      (await generateReply({
+        tenant,
+        from: input.from,
+        channel,
+        conversationId: conversation.id,
+      })) || (await decide({ tenant, text, customer, from: input.from, channel }));
+  } catch (err) {
+    console.error("sofia reply", err);
+    reply = await decide({ tenant, text, customer, from: input.from, channel });
+  }
 
   await prisma.message.create({
     data: { conversationId: conversation.id, role: "assistant", body: reply },

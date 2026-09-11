@@ -3,7 +3,7 @@ import { handleInbound } from "@/lib/ai/engine";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 30;
 
 const Body = z.object({
   to: z.string().min(5),
@@ -14,11 +14,19 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
-  const json = await req.json().catch(() => null);
-  const parsed = Body.safeParse(json);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
+  try {
+    const json = await req.json().catch(() => null);
+    const parsed = Body.safeParse(json);
+    if (!parsed.success) {
+      return NextResponse.json({ reply: "No entendí el mensaje. Escríbeme otra vez, por favor." });
+    }
+    const result = await handleInbound(parsed.data);
+    return NextResponse.json(result);
+  } catch (err) {
+    console.error("inbound", err);
+    return NextResponse.json({
+      reply: "Soy Sofía. Tuve un tropiezo al responder. Escríbeme de nuevo, por favor.",
+      audio: null,
+    });
   }
-  const result = await handleInbound(parsed.data);
-  return NextResponse.json(result);
 }

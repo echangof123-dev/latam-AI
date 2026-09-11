@@ -84,22 +84,36 @@ const tools = [
   },
 ];
 
+async function openaiFetch(url: string, init: RequestInit, ms = 12000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 export async function synthesizeVoiceMp3(text: string) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return null;
-  const res = await fetch("https://api.openai.com/v1/audio/speech", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
+  const res = await openaiFetch(
+    "https://api.openai.com/v1/audio/speech",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "tts-1",
+        voice: process.env.OPENAI_TTS_VOICE || "nova",
+        input: text.slice(0, 1200),
+        speed: 0.97,
+      }),
     },
-    body: JSON.stringify({
-      model: "tts-1-hd",
-      voice: process.env.OPENAI_TTS_VOICE || "nova",
-      input: text.slice(0, 4000),
-      speed: 0.97,
-    }),
-  });
+    15000,
+  );
   if (!res.ok) {
     console.error("OpenAI TTS", res.status, await res.text());
     return null;
@@ -142,77 +156,82 @@ export async function generateReply(opts: {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return null;
 
-  const knowledge = await businessKnowledge(opts.tenant.id, opts.from);
-  const history = await prisma.message.findMany({
-    where: { conversationId: opts.conversationId },
-    orderBy: { createdAt: "desc" },
-    take: 16,
-  });
-  const chronological = history.reverse();
+  try {
+    const knowledge = await businessKnowledge(opts.tenant.id, opts.from);
+    const history = await prisma.message.findMany({
+      where: { conversationId: opts.conversationId },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    });
+    const chronological = history.reverse();
 
-  const messages: Array<Record<string, unknown>> = [
-    {
-      role: "system",
-      content: `Eres Sofía, una recepcionista humana de ${opts.tenant.name}. No eres un bot rígido: hablas como una persona real, cálida, de Latinoamérica.
+    const messages: Array<Record<string, unknown>> = [
+      {
+        role: "system",
+        content: `Eres Sofía, una recepcionista humana de ${opts.tenant.name}. No eres un bot rígido: hablas como una persona real, cálida, de Latinoamérica.
 Tratas a la gente de usted o tú según el tono de ellos. Usas el nombre si lo conoces. Una idea por frase, 2 a 5 frases. Puedes empatizar un segundo (“claro”, “con gusto”) y luego ir al grano.
 SOLO usas la ficha de ESTE negocio. Si te preguntan de otro local, precios o horarios que no estén abajo, di que no lo tienes a la mano. Nunca inventes.
 Cuando hablen de citas, usa las herramientas. Si listan huecos, esos están libres. Si confirman una hora, agéndala o reprogramala.
 No enumeres la ficha completa: responde lo que preguntaron, como lo haría alguien en el mostrador.
 El dueño no ve este chat.
 Ficha del negocio (fuente de verdad):\n${knowledge}`,
-    },
-    ...chronological.map((m) => ({
-      role: (m.role === "customer" ? "user" : "assistant") as "user" | "assistant",
-      content: m.body,
-    })),
-  ];
-
-  for (let i = 0; i < 4; i++) {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: MODEL,
-        temperature: 0.75,
-        messages,
-        tools,
-        tool_choice: "auto",
-      }),
-    });
-    if (!res.ok) {
-      console.error("OpenAI chat", res.status, await res.text());
-      return null;
-    }
-    const data = (await res.json()) as {
-      choices?: Array<{
-        message?: {
-          content?: string | null;
-          tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
-        };
-      }>;
-    };
-    const msg = data.choices?.[0]?.message;
-    if (!msg) return null;
-    if (msg.tool_calls?.length) {
-      messages.push(msg as Record<string, unknown>);
-      for (const call of msg.tool_calls) {
-        let args: Record<string, string> = {};
-        try {
-          args = JSON.parse(call.function.arguments || "{}") as Record<string, string>;
-        } catch {
-          args = {};
-        }
-        const result = await runTool(call.function.name, args, opts);
-        messages.push({ role: "tool", tool_call_id: call.id, content: result });
+      ...chronological.map((m) => ({
+        role: (m.role === "customer" ? "user" : "assistant") as "user" | "assistant",
+        content: m.body,
+      })),
+    ];
+
+    for (let i = 0; i < 3; i++) {
+      const res = await openaiFetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          temperature: 0.75,
+          messages,
+          tools,
+          tool_choice: "auto",
+        }),
+      });
+      if (!res.ok) {
+        console.error("OpenAI chat", res.status, await res.text());
+        return null;
       }
-      continue;
+      const data = (await res.json()) as {
+        choices?: Array<{
+          message?: {
+            content?: string | null;
+            tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
+          };
+        }>;
+      };
+      const msg = data.choices?.[0]?.message;
+      if (!msg) return null;
+      if (msg.tool_calls?.length) {
+        messages.push(msg as Record<string, unknown>);
+        for (const call of msg.tool_calls) {
+          let args: Record<string, string> = {};
+          try {
+            args = JSON.parse(call.function.arguments || "{}") as Record<string, string>;
+          } catch {
+            args = {};
+          }
+          const result = await runTool(call.function.name, args, opts);
+          messages.push({ role: "tool", tool_call_id: call.id, content: result });
+        }
+        continue;
+      }
+      return (msg.content || "").trim() || null;
     }
-    return (msg.content || "").trim() || null;
+    return null;
+  } catch (err) {
+    console.error("generateReply", err);
+    return null;
   }
-  return null;
 }
 
 async function runTool(

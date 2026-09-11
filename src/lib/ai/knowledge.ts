@@ -1,6 +1,6 @@
 import { prisma } from "../db";
 import { VERTICAL_LABEL } from "../modules";
-import { availableSlotsAnyStaff, fmtRange, formatHoursHuman } from "../reservations";
+import { formatHoursHuman } from "../reservations";
 import { fmt } from "./booking";
 
 export async function businessKnowledge(tenantId: string, customerPhone: string) {
@@ -67,18 +67,6 @@ export async function businessKnowledge(tenantId: string, customerPhone: string)
           .join("; ")
       : "Esta persona no tiene cita vigente.",
   ];
-
-  for (const s of tenant.services.slice(0, 4)) {
-    const slots = await availableSlotsAnyStaff({
-      tenantId,
-      serviceId: s.id,
-      days: 5,
-    });
-    lines.push(
-      `Huecos próximos para ${s.name}: ` +
-        (slots.length ? slots.slice(0, 6).map((x) => fmtRange(x.start)).join("; ") : "sin huecos"),
-    );
-  }
 
   return lines.filter(Boolean).join("\n");
 }
