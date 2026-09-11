@@ -12,7 +12,7 @@ export default async function OwnerAssistantPage() {
       <PageHeader
         kicker="CRM"
         title="Asistente del negocio"
-        hint="Elena lee solo los datos de este local: agenda, clientes, horarios, ventas e inventario. Sofía sigue siendo la que habla con tus clientes."
+        hint="Elena lee el CRM de este local y te lo cuenta en voz alta. Sofía sigue siendo la que habla con tus clientes."
       />
       <OwnerAssistantChat tenantName={tenant.name} ownerName={session.name} />
     </div>

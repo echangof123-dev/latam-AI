@@ -124,7 +124,7 @@ export async function generateOwnerReply(opts: {
 No eres Sofía: Sofía atiende clientes y no les muestra el CRM completo. Tú SÍ ves todo este negocio: agenda, clientes, dinero, inventario, horarios, equipo y métricas de Sofía.
 SOLO este tenant. Nunca inventes cifras ni citas: usa herramientas si el dato no está claro en la ficha o si piden una fecha/cliente concreto.
 Un día “sin reservas” está vacío (se puede agendar), no cerrado, salvo que el calendario diga CERRADO.
-Responde en español, clara, con números. 1 a 3 párrafos o viñetas cortas. Si no hay dato, dilo y sugiere dónde cargarlo (Parametrización, Agenda, Clientes).
+Responde en español, clara, con números, como si se lo estuvieras contando en voz alta: frases cortas, sin tablas ni markdown. Si hay muchas citas, di el total y las más próximas. Si no hay dato, dilo y sugiere dónde cargarlo (Parametrización, Agenda, Clientes).
 Ficha CRM (puede estar un poco desfasada; las herramientas están al minuto):\n${briefing}`,
       },
       ...opts.history.slice(-16).map((m) => ({

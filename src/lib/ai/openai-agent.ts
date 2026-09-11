@@ -115,7 +115,7 @@ async function openaiFetch(url: string, init: RequestInit, ms = 12000) {
   }
 }
 
-export async function synthesizeVoiceMp3(text: string) {
+export async function synthesizeVoiceMp3(text: string, voice?: string) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return null;
   const res = await openaiFetch(
@@ -128,7 +128,7 @@ export async function synthesizeVoiceMp3(text: string) {
       },
       body: JSON.stringify({
         model: "tts-1",
-        voice: process.env.OPENAI_TTS_VOICE || "nova",
+        voice: voice || process.env.OPENAI_TTS_VOICE || "nova",
         input: text.slice(0, 1200),
         speed: 0.97,
       }),
@@ -142,8 +142,8 @@ export async function synthesizeVoiceMp3(text: string) {
   return Buffer.from(await res.arrayBuffer());
 }
 
-export async function synthesizeVoice(text: string) {
-  const buf = await synthesizeVoiceMp3(text);
+export async function synthesizeVoice(text: string, voice?: string) {
+  const buf = await synthesizeVoiceMp3(text, voice);
   if (!buf) return null;
   return `data:audio/mpeg;base64,${buf.toString("base64")}`;
 }

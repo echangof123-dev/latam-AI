@@ -23,6 +23,9 @@ export function OwnerAssistantChat({
   const first = ownerName.split(" ")[0] || "tú";
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(true);
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       role: "ai",
@@ -31,6 +34,17 @@ export function OwnerAssistantChat({
   ]);
   const box = useRef<HTMLDivElement>(null);
   const loaded = useRef(false);
+  const recRef = useRef<{ start: () => void; stop: () => void } | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const voiceOnRef = useRef(true);
+
+  useEffect(() => {
+    voiceOnRef.current = voiceOn;
+    if (!voiceOn) {
+      audioRef.current?.pause();
+      setSpeaking(false);
+    }
+  }, [voiceOn]);
 
   useEffect(() => {
     box.current?.scrollTo({ top: box.current.scrollHeight, behavior: "smooth" });
@@ -52,6 +66,31 @@ export function OwnerAssistantChat({
     })();
   }, []);
 
+  async function speakHuman(phrase: string) {
+    if (!voiceOnRef.current) return;
+    audioRef.current?.pause();
+    try {
+      const res = await fetch("/api/channels/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: phrase, voice: "shimmer" }),
+      });
+      const data = await res.json().catch(() => null);
+      if (data?.audio && voiceOnRef.current) {
+        const audio = new Audio(data.audio);
+        audioRef.current = audio;
+        audio.onplay = () => setSpeaking(true);
+        audio.onended = () => setSpeaking(false);
+        audio.onerror = () => setSpeaking(false);
+        await audio.play();
+        return;
+      }
+    } catch {
+      /* el texto ya está en pantalla */
+    }
+    setSpeaking(false);
+  }
+
   async function send(raw: string) {
     const clean = raw.trim();
     if (!clean || busy) return;
@@ -67,6 +106,9 @@ export function OwnerAssistantChat({
       const data = await res.json().catch(() => null);
       const reply = data?.reply || "No pude leer el CRM. Prueba otra vez.";
       setMsgs((m) => [...m, { role: "ai", text: reply }]);
+      setBusy(false);
+      if (data?.reply) void speakHuman(reply);
+      return;
     } catch {
       setMsgs((m) => [...m, { role: "ai", text: "Hay un problema de conexión." }]);
     } finally {
@@ -74,12 +116,61 @@ export function OwnerAssistantChat({
     }
   }
 
+  function toggleMic() {
+    const SR =
+      (window as unknown as { SpeechRecognition?: new () => BrowserRecog; webkitSpeechRecognition?: new () => BrowserRecog })
+        .SpeechRecognition ||
+      (window as unknown as { webkitSpeechRecognition?: new () => BrowserRecog }).webkitSpeechRecognition;
+    if (!SR) {
+      alert("Este navegador no permite dictado. Usa Chrome o Edge, o escribe.");
+      return;
+    }
+    if (listening && recRef.current) {
+      recRef.current.stop();
+      setListening(false);
+      return;
+    }
+    audioRef.current?.pause();
+    setSpeaking(false);
+    const rec = new SR();
+    rec.lang = "es-CO";
+    rec.interimResults = false;
+    rec.onresult = (ev: { results: { 0: { 0: { transcript: string } } } }) => {
+      void send(ev.results[0][0].transcript);
+    };
+    rec.onend = () => setListening(false);
+    recRef.current = rec;
+    setListening(true);
+    rec.start();
+  }
+
+  const status = speaking
+    ? "Hablando…"
+    : busy
+      ? "Consultando el negocio…"
+      : listening
+        ? "Te escucho…"
+        : voiceOn
+          ? "En línea · con voz"
+          : "En línea · sin voz";
+
   return (
     <div className="card overflow-hidden p-0">
-      <div className="px-6 py-5 border-b border-white/10">
-        <p className="text-xl font-semibold">Elena</p>
-        <p className="text-sm text-slate-400">Asistente del CRM · {tenantName}</p>
-        <p className="text-xs text-emerald-400 mt-1">{busy ? "Consultando el negocio…" : "En línea"}</p>
+      <div className="px-6 py-5 border-b border-white/10 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xl font-semibold">Elena</p>
+          <p className="text-sm text-slate-400">Asistente del CRM · {tenantName}</p>
+          <p className="text-xs text-emerald-400 mt-1">{status}</p>
+        </div>
+        <button
+          type="button"
+          className={`text-xs rounded-full px-3 py-1.5 border ${
+            voiceOn ? "border-gold-500/50 text-gold-400" : "border-white/15 text-slate-400"
+          }`}
+          onClick={() => setVoiceOn((v) => !v)}
+        >
+          {voiceOn ? "Voz encendida" : "Voz apagada"}
+        </button>
       </div>
 
       <div className="px-4 pt-4 flex flex-wrap gap-2">
@@ -117,10 +208,17 @@ export function OwnerAssistantChat({
           void send(text);
         }}
       >
+        <button
+          type="button"
+          onClick={toggleMic}
+          className={`rounded-xl px-4 font-semibold ${listening ? "bg-red-500 text-white" : "btn-ghost"}`}
+        >
+          {listening ? "Parar" : "Hablar"}
+        </button>
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Ej: ¿Qué citas hay el 16 de septiembre?"
+          placeholder="Pregúntame o usa Hablar…"
           className="flex-1"
           disabled={busy}
         />
@@ -131,3 +229,12 @@ export function OwnerAssistantChat({
     </div>
   );
 }
+
+type BrowserRecog = {
+  lang: string;
+  interimResults: boolean;
+  start: () => void;
+  stop: () => void;
+  onresult: ((ev: { results: { 0: { 0: { transcript: string } } } }) => void) | null;
+  onend: (() => void) | null;
+};
