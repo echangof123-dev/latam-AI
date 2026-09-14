@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CLIENT_VOICE } from "@/lib/brand";
+import { useVoiceCapture } from "./voice-capture";
 
 type Biz = { name: string; phone: string; clientName?: string };
 type Msg = { role: "user" | "ai"; text: string };
@@ -10,7 +11,6 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
   const [to, setTo] = useState(businesses[0]?.phone || "");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [fromPhone] = useState(() => {
     if (typeof window === "undefined") return "+573100000001";
@@ -22,8 +22,8 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
     return n;
   });
   const box = useRef<HTMLDivElement>(null);
-  const recRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const voiceReply = useRef(false);
 
   const current = useMemo(() => businesses.find((b) => b.phone === to) || businesses[0], [businesses, to]);
   const agent = current?.clientName || "Sofía";
@@ -53,6 +53,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
       const data = await res.json().catch(() => null);
       if (data?.audio) {
         const audio = new Audio(data.audio);
+        audio.setAttribute("playsinline", "true");
         audioRef.current = audio;
         audio.onplay = () => setSpeaking(true);
         audio.onended = () => setSpeaking(false);
@@ -66,80 +67,87 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
     setSpeaking(false);
   }
 
-  async function send(raw: string) {
-    const clean = raw.trim();
-    if (!clean || busy) return;
-    if (!to) {
-      setMsgs((m) => [...m, { role: "ai", text: "Elige un negocio arriba y vuelve a enviar." }]);
-      return;
-    }
-    setBusy(true);
-    setMsgs((m) => [...m, { role: "user", text: clean }]);
-    setText("");
-    try {
-      const res = await fetch("/api/channels/inbound", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, from: fromPhone, text: clean, channel: "WEB", wantAudio: false }),
-      });
-      const data = await res.json().catch(() => null);
-      const reply =
-        data?.reply ||
-        `Soy ${agent}. Ahora mismo no pude completar la respuesta. ¿Lo intentamos otra vez?`;
-      setMsgs((m) => [...m, { role: "ai", text: reply }]);
-      setBusy(false);
-      if (data?.reply) void speakHuman(reply);
-      return;
-    } catch {
-      setMsgs((m) => [...m, { role: "ai", text: "Hay un problema de conexión. Intenta otra vez." }]);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const send = useCallback(
+    async (raw: string, heard = false) => {
+      const clean = raw.trim();
+      if (!clean || busy) return;
+      if (!to) {
+        setMsgs((m) => [...m, { role: "ai", text: "Elige un negocio arriba y vuelve a enviar." }]);
+        return;
+      }
+      setBusy(true);
+      setMsgs((m) => [...m, { role: "user", text: clean }]);
+      setText("");
+      try {
+        const res = await fetch("/api/channels/inbound", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to,
+            from: fromPhone,
+            text: clean,
+            channel: "WEB",
+            wantAudio: false,
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        const reply =
+          data?.reply ||
+          `Soy ${agent}. Ahora mismo no pude completar la respuesta. ¿Lo intentamos otra vez?`;
+        setMsgs((m) => [...m, { role: "ai", text: reply }]);
+        setBusy(false);
+        if (data?.reply && heard) void speakHuman(reply);
+        return;
+      } catch {
+        setMsgs((m) => [...m, { role: "ai", text: "Hay un problema de conexión. Intenta otra vez." }]);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [agent, busy, fromPhone, to],
+  );
 
-  function toggleMic() {
-    const SR =
-      (window as unknown as { SpeechRecognition?: new () => BrowserRecog; webkitSpeechRecognition?: new () => BrowserRecog })
-        .SpeechRecognition ||
-      (window as unknown as { webkitSpeechRecognition?: new () => BrowserRecog }).webkitSpeechRecognition;
-    if (!SR) {
-      alert("Este navegador no permite dictado. Usa Chrome o Edge, o escribe.");
-      return;
-    }
-    if (listening && recRef.current) {
-      recRef.current.stop();
-      setListening(false);
-      return;
-    }
-    audioRef.current?.pause();
-    setSpeaking(false);
-    const rec = new SR();
-    rec.lang = "es-CO";
-    rec.interimResults = false;
-    rec.onresult = (ev: { results: { 0: { 0: { transcript: string } } } }) => {
-      void send(ev.results[0][0].transcript);
-    };
-    rec.onend = () => setListening(false);
-    recRef.current = rec;
-    setListening(true);
-    rec.start();
-  }
+  const onVoice = useCallback(
+    (said: string) => {
+      if (!said.trim()) {
+        setMsgs((m) => [
+          ...m,
+          {
+            role: "ai",
+            text: "No alcancé a oír. En el celular pulsa Hablar, suelta y espera; o escribe aquí.",
+          },
+        ]);
+        return;
+      }
+      voiceReply.current = true;
+      void send(said, true);
+    },
+    [send],
+  );
 
-  const status = speaking ? "Hablando…" : busy ? "Pensando…" : listening ? "Te escucho…" : "En línea · voz de mujer";
+  const { listening, toggle } = useVoiceCapture(onVoice);
+
+  const status = speaking
+    ? "Hablando…"
+    : busy
+      ? "Pensando…"
+      : listening
+        ? "Te escucho… suelta para enviar"
+        : "En línea";
 
   return (
-    <div className="card overflow-hidden p-0">
-      <div className="px-6 py-5 border-b border-white/10 flex items-center gap-3">
+    <div className="card overflow-hidden p-0 flex flex-col h-full min-h-0 sm:h-[min(34rem,calc(100dvh-8rem))]">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/10 flex items-center gap-3 shrink-0">
         <span className={`agent-face agent-face-client ${speaking ? "ring-2 ring-rose-300/60" : ""}`}>{initial}</span>
-        <div>
-          <p className="text-lg font-semibold leading-tight">{agent}</p>
-          <p className="text-sm text-slate-400">{bizName} · recepción</p>
+        <div className="min-w-0">
+          <p className="text-base sm:text-lg font-semibold leading-tight truncate">{agent}</p>
+          <p className="text-xs sm:text-sm text-slate-400 truncate">{bizName} · recepción</p>
           <p className="text-xs text-emerald-400 mt-0.5">{status}</p>
         </div>
       </div>
 
       {businesses.length > 1 ? (
-        <div className="px-6 pt-4">
+        <div className="px-4 sm:px-6 pt-3 shrink-0">
           <label className="block mb-1">Negocio</label>
           <select value={to} onChange={(e) => setTo(e.target.value)} className="w-full">
             {businesses.map((b) => (
@@ -151,7 +159,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
         </div>
       ) : null}
 
-      <div ref={box} className="h-[400px] overflow-y-auto px-6 py-4 space-y-3">
+      <div ref={box} className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-3 space-y-3">
         {msgs.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <p className={m.role === "user" ? "chat-user" : "chat-agent"}>{m.text}</p>
@@ -160,16 +168,17 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
       </div>
 
       <form
-        className="border-t border-white/10 p-4 flex gap-2"
+        className="border-t border-white/10 p-3 sm:p-4 flex gap-2 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         onSubmit={(e) => {
           e.preventDefault();
-          void send(text);
+          voiceReply.current = false;
+          void send(text, false);
         }}
       >
         <button
           type="button"
-          onClick={toggleMic}
-          className={`rounded-xl px-4 font-semibold ${listening ? "bg-red-500 text-white" : "btn-ghost"}`}
+          onClick={() => void toggle()}
+          className={`rounded-xl px-3 sm:px-4 font-semibold shrink-0 ${listening ? "bg-red-500 text-white" : "btn-ghost"}`}
         >
           {listening ? "Parar" : "Hablar"}
         </button>
@@ -177,22 +186,15 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={`Escríbele a ${agent}…`}
-          className="flex-1"
+          className="flex-1 min-w-0"
           disabled={busy}
+          inputMode="text"
+          autoComplete="off"
         />
-        <button type="submit" className="btn-gold" disabled={busy}>
+        <button type="submit" className="btn-gold shrink-0" disabled={busy}>
           {busy ? "…" : "Enviar"}
         </button>
       </form>
     </div>
   );
 }
-
-type BrowserRecog = {
-  lang: string;
-  interimResults: boolean;
-  start: () => void;
-  stop: () => void;
-  onresult: ((ev: { results: { 0: { 0: { transcript: string } } } }) => void) | null;
-  onend: (() => void) | null;
-};

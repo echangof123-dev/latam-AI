@@ -30,14 +30,19 @@ export default async function OwnerHome() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="font-display text-4xl">{tenant.name}</h1>
-        <p className="text-slate-400 mt-2 max-w-2xl leading-relaxed">
-          Reservas, pagos y resúmenes de {tenant.name}. {agents.owner.name} consulta el CRM (voz de hombre).{" "}
-          {agents.client.name} atiende a tus clientes (voz de mujer).
+        <h1 className="font-display text-3xl sm:text-4xl">{tenant.name}</h1>
+        <p className="text-slate-400 mt-2 max-w-2xl leading-relaxed text-sm sm:text-base">
+          Reservas, pagos y resúmenes. {agents.client.name} atiende clientes. {agents.owner.name} te
+          responde a ti.
         </p>
-        <Link href="/app/asistente" className="btn-gold inline-block mt-4">
-          Hablar con {agents.owner.name}
-        </Link>
+        <div className="mt-4 grid grid-cols-1 sm:flex gap-2">
+          <Link href="/chat" className="btn-gold text-center">
+            Hablar con {agents.client.name}
+          </Link>
+          <Link href="/app/asistente" className="btn-ghost text-center">
+            Preguntar a {agents.owner.name}
+          </Link>
+        </div>
       </header>
       <div className="grid sm:grid-cols-3 gap-4">
         <div className="card">

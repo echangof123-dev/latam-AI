@@ -12,13 +12,13 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen">
-      <header className="site-wrap flex items-center justify-between py-5">
+      <header className="site-wrap flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-4">
         <BrandLockup compact />
-        <div className="flex gap-3">
-          <Link href="/chat" className="btn-ghost">
-            Probar recepción
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3">
+          <Link href="/chat" className="btn-gold text-center">
+            Hablar con la IA
           </Link>
-          <Link href="/login" className="btn-gold">
+          <Link href="/login" className="btn-ghost text-center">
             Entrar
           </Link>
         </div>
@@ -27,18 +27,18 @@ export default async function Home() {
       <section className="site-wrap py-12 lg:py-20 grid lg:grid-cols-[1.15fr_0.85fr] gap-12 items-center">
         <div>
           <p className="text-gold-400 text-xs font-semibold tracking-[0.2em] uppercase">{PRODUCT_TAGLINE}</p>
-          <h1 className="font-display text-5xl lg:text-[3.4rem] leading-[1.12] mt-4">
+          <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.4rem] leading-[1.12] mt-4">
             Agenda, clientes y una recepción que atiende sola.
           </h1>
           <p className="mt-5 text-lg text-slate-300 max-w-xl leading-relaxed">
             {PRODUCT_NAME} opera el negocio por dentro y atiende al público por fuera. Cada empresa tiene su
             recepcionista (voz de mujer) y su asistente del dueño (voz de hombre), con los datos reales de ese CRM.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/chat" className="btn-gold text-lg px-6 py-3">
+          <div className="mt-8 grid grid-cols-1 sm:flex sm:flex-wrap gap-3">
+            <Link href="/chat" className="btn-gold text-lg px-6 py-3 text-center">
               Hablar con la recepción
             </Link>
-            <Link href="/login" className="btn-ghost text-lg px-6 py-3">
+            <Link href="/login" className="btn-ghost text-lg px-6 py-3 text-center">
               Abrir el panel
             </Link>
           </div>

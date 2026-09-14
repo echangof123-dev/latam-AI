@@ -17,7 +17,7 @@ async function LoginInner({
 }) {
   const q = await searchParams;
   return (
-    <main className="min-h-screen grid lg:grid-cols-2">
+    <main className="min-h-dvh grid lg:grid-cols-2">
       <section className="hidden lg:flex flex-col justify-between p-12 border-r border-white/10 bg-[#080d16]">
         <BrandLockup />
         <div>
@@ -34,7 +34,7 @@ async function LoginInner({
           ← Probar la recepción
         </Link>
       </section>
-      <section className="flex items-center justify-center p-8">
+      <section className="flex items-center justify-center p-4 sm:p-8 min-h-dvh lg:min-h-0">
         <form action="/api/auth/login" method="post" className="w-full max-w-sm space-y-4 card">
           <div>
             <div className="lg:hidden mb-4">
