@@ -34,8 +34,12 @@ for (let i = 1; i <= 8; i++) {
   sleep(2);
 }
 
-console.log("Cargando datos de demo...");
 run([path.join(root, "prisma", "ensure-column.cjs")]);
+if (process.env.RUN_SEED === "true") {
+  console.log("Cargando datos de demo (RUN_SEED=true)...");
+} else {
+  console.log("Semilla solo si la base está vacía...");
+}
 run([path.join(root, "prisma", "seed.mjs")]);
 
 const env = { ...process.env, PORT: port };

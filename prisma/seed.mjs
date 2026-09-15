@@ -37,11 +37,17 @@ async function ensureModules(tenantId, extraOff = []) {
 }
 
 async function main() {
+  const already = await prisma.user.count();
+  if (already > 0 && process.env.RUN_SEED !== "true") {
+    console.log("Seed omitido: ya hay datos. Pon RUN_SEED=true solo si quieres recargar la demo.");
+    return;
+  }
+
   const passwordHash = bcrypt.hashSync("ejeuno123", 10);
 
   const superadmin = await prisma.user.upsert({
     where: { email: "nathan.k@example.net" },
-    update: { passwordHash, role: "SUPERADMIN", name: "Superadmin Eje Uno" },
+    update: { role: "SUPERADMIN", name: "Superadmin Eje Uno" },
     create: {
       email: "nathan.k@example.net",
       passwordHash,
@@ -75,7 +81,7 @@ async function main() {
 
   const ownerBarber = await prisma.user.upsert({
     where: { email: "tina.r@example.net" },
-    update: { passwordHash },
+    update: {},
     create: {
       email: "tina.r@example.net",
       passwordHash,
@@ -85,7 +91,7 @@ async function main() {
   });
   const ownerClinic = await prisma.user.upsert({
     where: { email: "iris.p@example.org" },
-    update: { passwordHash },
+    update: {},
     create: {
       email: "iris.p@example.org",
       passwordHash,

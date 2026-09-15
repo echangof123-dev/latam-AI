@@ -69,12 +69,14 @@ async function LoginInner({
           <Link href="/chat" className="block text-center text-sm text-gold-400 lg:hidden">
             Probar recepción
           </Link>
-          <ul className="text-xs text-slate-500 space-y-1 pt-2 border-t border-white/10">
-            <li>Demostración · clave ejeuno123</li>
-            <li>nathan.k@example.net — configuración</li>
-            <li>tina.r@example.net — Barbería Norte</li>
-            <li>iris.p@example.org — Clínica Alma</li>
-          </ul>
+          {process.env.SHOW_DEMO_LOGIN === "true" ? (
+            <ul className="text-xs text-slate-500 space-y-1 pt-2 border-t border-white/10">
+              <li>Demostración · clave ejeuno123</li>
+              <li>nathan.k@example.net — configuración</li>
+              <li>tina.r@example.net — Barbería Norte</li>
+              <li>iris.p@example.org — Clínica Alma</li>
+            </ul>
+          ) : null}
         </form>
       </section>
     </main>

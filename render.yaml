@@ -27,5 +27,5 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
-      - key: OPENAI_TTS_VOICE
-        value: "nova"
+      - key: RUN_SEED
+        value: "false"
