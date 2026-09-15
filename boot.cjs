@@ -35,6 +35,7 @@ for (let i = 1; i <= 8; i++) {
 }
 
 run([path.join(root, "prisma", "ensure-column.cjs")]);
+run([path.join(root, "prisma", "ensure-clinica-bienestar.cjs")]);
 if (process.env.RUN_SEED === "true") {
   console.log("Cargando datos de demo (RUN_SEED=true)...");
 } else {

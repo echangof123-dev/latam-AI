@@ -52,7 +52,7 @@ export function WhatsappSaveForm({
     <form onSubmit={onSubmit} className="space-y-4">
       {ok ? (
         <p className="rounded-2xl border border-emerald-600 bg-emerald-950/40 px-4 py-3 text-lg text-emerald-300">
-          Guardado. Ya puedes escribir Hola al sandbox de Gupshup.
+          Guardado. El número quedó en ese negocio.
         </p>
       ) : null}
       {error ? (
@@ -69,11 +69,12 @@ export function WhatsappSaveForm({
         </select>
       </div>
       <div className="space-y-1">
-        <label>Número sandbox de Gupshup (déjalo así si es el de prueba)</label>
-        <input name="e164" defaultValue="+917834811114" className="w-full text-lg py-3" required />
+        <label>Número de WhatsApp del negocio</label>
+        <input name="e164" defaultValue="0986899878" className="w-full text-lg py-3" required />
+        <p className="text-xs text-slate-500">Ejemplo Clínica Bienestar: 0986899878</p>
       </div>
       <button type="submit" className="btn-gold w-full text-xl py-4" disabled={busy}>
-        {busy ? "Guardando…" : "Guardar número Twilio"}
+        {busy ? "Guardando…" : "Guardar número"}
       </button>
     </form>
   );

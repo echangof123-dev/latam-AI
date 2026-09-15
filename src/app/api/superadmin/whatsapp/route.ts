@@ -2,12 +2,12 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { redirectTo } from "@/lib/http";
+import { toE164 } from "@/lib/phone";
 
 export const dynamic = "force-dynamic";
 
 function digitsPhone(raw: string) {
-  const d = String(raw || "").replace(/\D/g, "");
-  return d ? `+${d}` : "";
+  return toE164(raw);
 }
 
 export async function POST(req: Request) {
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
   const form = await req.formData().catch(() => null);
   const tenantId = String(form?.get("tenantId") || "").trim();
-  const e164 = digitsPhone(String(form?.get("e164") || "+917834811114"));
+  const e164 = digitsPhone(String(form?.get("e164") || "0986899878"));
 
   if (!tenantId || !e164) return fail("faltan");
 

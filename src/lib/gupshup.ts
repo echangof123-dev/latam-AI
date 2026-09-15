@@ -1,6 +1,7 @@
 import { handleInbound } from "./ai/engine";
 import { transcribeAudio } from "./ai/openai-agent";
 import { prisma } from "./db";
+import { toE164 } from "./phone";
 import { publicAppUrl, putVoiceMp3 } from "./voice-store";
 import { whatsappTrace } from "./whatsapp-trace";
 
@@ -10,11 +11,12 @@ export function gupshupReady() {
 
 export function gupshupSource() {
   const raw = process.env.GUPSHUP_SOURCE || "917834811114";
-  return raw.replace(/\D/g, "") || "917834811114";
+  return toE164(raw).replace(/\D/g, "") || "917834811114";
 }
 
 export type GupshupInbound = {
   from: string;
+  to?: string;
   text: string;
   audioUrl?: string;
   mime?: string;
@@ -81,12 +83,17 @@ function explain(raw: string) {
   return raw.slice(0, 280);
 }
 
-async function businessPhone() {
-  const src = `+${gupshupSource()}`;
+async function businessPhone(dest?: string) {
+  const tries = [dest, gupshupSource(), "593986899878"]
+    .map((v) => (v ? toE164(String(v)) : ""))
+    .filter(Boolean);
+  for (const e164 of tries) {
+    const hit = await prisma.phoneNumber.findUnique({ where: { e164 } });
+    if (hit) return hit;
+  }
   return (
-    (await prisma.phoneNumber.findUnique({ where: { e164: src } })) ||
     (await prisma.phoneNumber.findFirst({ where: { whatsappPhoneNumberId: "gupshup" } })) ||
-    (await prisma.phoneNumber.findFirst({ where: { tenant: { slug: "barberia-norte" } } }))
+    (await prisma.phoneNumber.findFirst({ where: { tenant: { slug: "clinica-bienestar" } } }))
   );
 }
 
@@ -134,7 +141,7 @@ export async function handleGupshupInbound(msg: GupshupInbound) {
   whatsappTrace.lastText = text;
   whatsappTrace.lastHint = voiceIn ? "Llegó un audio. Transcribo y contesto." : "Gupshup entregó el mensaje. Voy a contestar.";
 
-  const phone = await businessPhone();
+  const phone = await businessPhone(msg.to);
   const to = phone?.e164 || `+${gupshupSource()}`;
   const result = await handleInbound({
     to,
@@ -165,6 +172,8 @@ export function parseGupshupBody(json: Record<string, unknown> | null): GupshupI
   const payload = (json.payload || {}) as Record<string, unknown>;
   const inner = (payload.payload || payload) as Record<string, unknown>;
   const sender = (payload.sender || {}) as Record<string, unknown>;
+  const destRaw = String(payload.destination || json.destination || "");
+  const dest = destRaw.replace(/\D/g, "").length >= 8 ? destRaw : "";
   const from = String(sender.phone || payload.source || json.source || "");
   if (!from && type !== "message" && type !== "call") return null;
 
@@ -174,7 +183,7 @@ export function parseGupshupBody(json: Record<string, unknown> | null): GupshupI
   const mime = String(inner.contentType || inner.mime || payload.contentType || "");
 
   if (type === "call" || msgType === "call" || msgType.includes("voip")) {
-    return { from: from || String(payload.source || ""), text, kind: "call" };
+    return { from: from || String(payload.source || ""), to: dest || undefined, text, kind: "call" };
   }
   if (
     msgType === "audio" ||
@@ -183,9 +192,9 @@ export function parseGupshupBody(json: Record<string, unknown> | null): GupshupI
     mime.startsWith("audio/") ||
     (msgType === "file" && /\.(ogg|opus|mp3|m4a|aac|amr)(\?|$)/i.test(audioUrl))
   ) {
-    return { from, text, audioUrl: audioUrl || undefined, mime, kind: "audio" };
+    return { from, to: dest || undefined, text, audioUrl: audioUrl || undefined, mime, kind: "audio" };
   }
   if (type !== "message" && type !== "user-event") return null;
   if (!from) return null;
-  return { from, text, kind: "text" };
+  return { from, to: dest || undefined, text, kind: "text" };
 }

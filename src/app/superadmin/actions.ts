@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { MODULE_CATALOG, VERTICAL_PRESETS, type ModuleKey } from "@/lib/modules";
+import { toE164 } from "@/lib/phone";
 import bcrypt from "bcryptjs";
 import { requireSuperadmin } from "@/lib/guards";
 
@@ -14,7 +15,7 @@ export async function createTenant(formData: FormData) {
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, "-");
   const vertical = String(formData.get("vertical") || "GENERIC");
-  const phone = String(formData.get("phone") || "").trim();
+  const phone = toE164(String(formData.get("phone") || ""));
   const ownerEmail = String(formData.get("ownerEmail") || "")
     .trim()
     .toLowerCase();

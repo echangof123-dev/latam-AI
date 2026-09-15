@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import type { Prisma } from "@prisma/client";
+import { toE164 } from "./phone";
 
 const tenantInclude = {
   phones: true,
@@ -11,9 +12,10 @@ const tenantInclude = {
 } satisfies Prisma.TenantInclude;
 
 export async function resolveTenantByNumber(e164: string) {
-  const digits = String(e164 || "").replace(/\D/g, "");
+  const canon = toE164(e164);
+  const digits = canon.replace(/\D/g, "") || String(e164 || "").replace(/\D/g, "");
   if (!digits) return null;
-  const variants = [`+${digits}`, digits, String(e164 || "")];
+  const variants = [canon, `+${digits}`, digits, String(e164 || "")];
   for (const v of variants) {
     if (!v) continue;
     const phone = await prisma.phoneNumber.findUnique({

@@ -28,7 +28,7 @@ export default async function WhatsappGuidePage() {
   const webhook = `${proto}://${host.split(",")[0].trim()}/api/channels/gupshup/whatsapp`;
   const ready = gupshupReady();
   const tenants = await prisma.tenant.findMany({ orderBy: { name: "asc" } });
-  const barber = tenants.find((t) => t.slug === "barberia-norte") || tenants[0];
+  const barber = tenants.find((t) => t.slug === "clinica-bienestar") || tenants.find((t) => t.slug === "barberia-norte") || tenants[0];
   const appName = process.env.GUPSHUP_APP_NAME || "EjeUno";
 
   return (
@@ -36,8 +36,8 @@ export default async function WhatsappGuidePage() {
       <header>
         <h1 className="font-display text-4xl">WhatsApp (Gupshup)</h1>
         <p className="text-slate-300 mt-2 text-lg">
-          Mensajes, notas de voz y respuesta automática de Sofía. El botón de llamada nativa de WhatsApp no lo
-          atiende Gupshup; usa el micrófono del chat (nota de audio).
+          Los pacientes de Clínica Bienestar deben escribir a <b>+593 98 689 9878</b>. Eso solo funciona cuando
+          Gupshup tenga ese número <b>en vivo</b>. Mientras tanto, pruébala en el chat web.
         </p>
       </header>
 
@@ -74,7 +74,8 @@ export default async function WhatsappGuidePage() {
         <CopyField value="GUPSHUP_APP_NAME" />
         <CopyField value="GUPSHUP_SOURCE" />
         <p>
-          El SOURCE, si usas sandbox, es <b>917834811114</b> (sin +).
+          El SOURCE, si la clínica ya está en vivo, es <b>593986899878</b> (sin +). En prueba (sandbox) sigue siendo{" "}
+          <b>917834811114</b>.
         </p>
         <p>Save Changes y espera el deploy.</p>
         <p className={ready ? "text-emerald-400 font-medium" : "text-amber-400 font-medium"}>
@@ -87,12 +88,24 @@ export default async function WhatsappGuidePage() {
         <CopyField value={webhook} />
       </Step>
 
-      <Step n="4" title="Unir tu WhatsApp">
+      <Step n="4" title="Que el paciente escriba">
         <p>
-          Abre WhatsApp y escribe al <b>+91 78348 11114</b>:
+          Cuando Gupshup muestre el número de Clínica Bienestar como <b>live</b>, el paciente abre WhatsApp y escribe a:
         </p>
-        <CopyField value={`proxy ${appName}`} />
-        <p>Debe confirmar que ya estás en el sandbox. Luego escribe Hola o mándale una nota de voz: Sofía transcribe y te responde en audio.</p>
+        <CopyField value="+593986899878" />
+        <p>
+          Enlace:{" "}
+          <a className="text-gold-400 underline" href="https://wa.me/593986899878">
+            https://wa.me/593986899878
+          </a>
+        </p>
+        <p className="text-slate-400 text-sm">
+          Si ese número todavía está en WhatsApp de un celular (el de una persona), Laura no puede usarlo. Tiene que
+          ser un chip sin WhatsApp personal, registrado en Gupshup.
+        </p>
+        <p className="text-slate-400 text-sm">
+          En modo prueba, aún se escribe al +91 78348 11114 con: proxy {appName}
+        </p>
       </Step>
 
       <Step n="5" title="Guardar el número aquí">
