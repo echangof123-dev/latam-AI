@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { OWNER_VOICE } from "@/lib/brand";
 import { useVoiceCapture } from "./voice-capture";
-import { IconMic, IconSend, IconStop, Sparkle, ThinkingRow } from "./ai-mark";
+import { AiBody, IconMic, IconSend, IconStop, Sparkle, ThinkingRow } from "./ai-mark";
 
 type Msg = { role: "user" | "ai"; text: string };
 
@@ -187,7 +187,7 @@ export function OwnerAssistantChat({
                   <span className="mt-1 shrink-0">
                     <Sparkle size={20} />
                   </span>
-                  <p className="chat-agent">{m.text}</p>
+                  <AiBody text={m.text} />
                 </div>
               ),
             )}

@@ -59,7 +59,16 @@ export function IconStop({ className }: { className?: string }) {
   );
 }
 
-export function ThinkingRow({ label = "Pensando" }: { label?: string }) {
+export function AiBody({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*\n]+?\*\*)/g);
+  return (
+    <p className="chat-agent">
+      {parts.map((part, i) =>
+        part.startsWith("**") && part.endsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : part,
+      )}
+    </p>
+  );
+}
   return (
     <div className="flex items-center gap-3 py-2">
       <Sparkle pulse />
