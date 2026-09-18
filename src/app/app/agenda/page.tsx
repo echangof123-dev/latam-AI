@@ -133,7 +133,7 @@ export default async function AgendaPage({
         <span className="text-slate-500">Profesional:</span>
         <Link
           href={`/app/agenda?week=${week}`}
-          className={`rounded-full px-3 py-1 border ${!staffFilter ? "border-gold-500 text-gold-400" : "border-white/10"}`}
+          className={`rounded-full px-3 py-1 border ${!staffFilter ? "border-[#0b57d0] text-[#0b57d0] bg-[#e8f0fe]" : "border-[#dadce0]"}`}
         >
           Todos
         </Link>
@@ -141,12 +141,12 @@ export default async function AgendaPage({
           <Link
             key={s.id}
             href={`/app/agenda?week=${week}&staff=${s.id}`}
-            className={`rounded-full px-3 py-1 border ${staffFilter === s.id ? "border-gold-500 text-gold-400" : "border-white/10"}`}
+            className={`rounded-full px-3 py-1 border ${staffFilter === s.id ? "border-[#0b57d0] text-[#0b57d0] bg-[#e8f0fe]" : "border-[#dadce0]"}`}
           >
             {s.name}
           </Link>
         ))}
-        <Link href="/app/sucursales" className="ml-auto text-gold-400 text-xs">
+        <Link href="/app/sucursales" className="ml-auto text-[#0b57d0] text-xs">
           Editar horarios de sede →
         </Link>
       </div>

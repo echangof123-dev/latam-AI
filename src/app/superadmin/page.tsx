@@ -82,11 +82,11 @@ export default async function SuperadminPage() {
             </div>
 
             <div>
-              <p className="text-sm text-white mb-2">Teléfonos de este negocio</p>
+              <p className="text-sm text-[#1f1f1f] mb-2">Teléfonos de este negocio</p>
               <ul className="space-y-2">
                 {t.phones.map((p) => (
                   <li key={p.id} className="rounded-xl bg-ink-950/80 p-3">
-                    <p className="text-lg text-gold-400">{p.e164}</p>
+                    <p className="text-lg text-[#0b57d0]">{p.e164}</p>
                     <p className="text-sm text-slate-400">
                       {p.e164.includes("555")
                         ? "Este es el WhatsApp de prueba de Meta. Úsalo para escribir Hola."

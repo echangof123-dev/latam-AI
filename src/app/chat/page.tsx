@@ -26,17 +26,17 @@ export default async function ChatPage() {
 
   return (
     <main className="h-dvh flex flex-col overflow-hidden">
-      <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10 shrink-0">
+      <header className="shrink-0 h-14 flex items-center justify-between gap-3 px-4 sm:px-6 max-w-5xl mx-auto w-full">
         <BrandLockup compact />
-        <Link href="/login" className="btn-ghost text-sm py-2 px-3">
+        <Link href="/login" className="text-sm font-medium text-[#0b57d0] px-3 py-2 rounded-full hover:bg-[#e8f0fe]">
           Panel
         </Link>
       </header>
-      <div className="flex-1 min-h-0 p-3 sm:p-6 sm:max-w-3xl sm:mx-auto sm:w-full">
+      <div className="flex-1 min-h-0">
         {businesses.length ? (
           <ReceptionistChat businesses={businesses} />
         ) : (
-          <p className="card">Aún no hay negocios con IA activa.</p>
+          <p className="card max-w-lg mx-auto mt-10">Aún no hay negocios con IA activa.</p>
         )}
       </div>
     </main>

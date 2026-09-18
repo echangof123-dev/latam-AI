@@ -30,8 +30,8 @@ export default async function OwnerHome() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="font-display text-3xl sm:text-4xl">{tenant.name}</h1>
-        <p className="text-slate-400 mt-2 max-w-2xl leading-relaxed text-sm sm:text-base">
+        <h1 className="text-3xl sm:text-4xl font-normal tracking-tight">{tenant.name}</h1>
+        <p className="text-[#5f6368] mt-2 max-w-2xl leading-relaxed text-sm sm:text-base">
           Reservas, pagos y resúmenes. {agents.client.name} atiende clientes. {agents.owner.name} te
           responde a ti.
         </p>
@@ -46,15 +46,15 @@ export default async function OwnerHome() {
       </header>
       <div className="grid sm:grid-cols-3 gap-4">
         <div className="card">
-          <p className="text-xs text-slate-500">Citas activas</p>
+          <p className="text-xs text-[#5f6368]">Citas activas</p>
           <p className="text-3xl mt-1">{appts}</p>
         </div>
         <div className="card">
-          <p className="text-xs text-slate-500">Clientes</p>
+          <p className="text-xs text-[#5f6368]">Clientes</p>
           <p className="text-3xl mt-1">{customers}</p>
         </div>
         <div className="card">
-          <p className="text-xs text-slate-500">Facturado</p>
+          <p className="text-xs text-[#5f6368]">Facturado</p>
           <p className="text-3xl mt-1">{money(invoices._sum.totalCents || 0)}</p>
         </div>
       </div>
@@ -63,14 +63,14 @@ export default async function OwnerHome() {
           <h2 className="font-semibold">Avisos importantes</h2>
           {notes.length === 0 ? <p className="text-slate-500 text-sm">Sin avisos.</p> : null}
           {notes.map((n) => (
-            <form key={n.id} action={markNotificationRead} className="border-b border-ink-800 pb-3">
+            <form key={n.id} action={markNotificationRead} className="border-b border-[#e8eaed] pb-3">
               <input type="hidden" name="id" value={n.id} />
               <p className="text-sm font-medium">
-                {n.title} {n.read ? "" : <span className="text-gold-400">· nuevo</span>}
+                {n.title} {n.read ? "" : <span className="text-[#0b57d0]">· nuevo</span>}
               </p>
-              <p className="text-sm text-slate-400">{n.body}</p>
+              <p className="text-sm text-[#5f6368]">{n.body}</p>
               {!n.read ? (
-                <button className="text-xs text-gold-400 mt-1">Marcar leído</button>
+                <button className="text-xs text-[#0b57d0] mt-1">Marcar leído</button>
               ) : null}
             </form>
           ))}
@@ -78,7 +78,7 @@ export default async function OwnerHome() {
         <div className="card">
           <h2 className="font-semibold mb-3">Rendimiento IA (7 días)</h2>
           <table className="w-full text-sm">
-            <thead className="text-slate-500">
+            <thead className="text-[#5f6368]">
               <tr>
                 <th className="text-left font-normal">Día</th>
                 <th>Chats</th>
@@ -88,7 +88,7 @@ export default async function OwnerHome() {
             </thead>
             <tbody>
               {metrics.map((m) => (
-                <tr key={m.id} className="border-t border-ink-800">
+                <tr key={m.id} className="border-t border-[#e8eaed]">
                   <td className="py-2">{m.day.toISOString().slice(0, 10)}</td>
                   <td className="text-center">{m.conversations}</td>
                   <td className="text-center">{m.bookings}</td>

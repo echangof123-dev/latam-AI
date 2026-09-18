@@ -11,7 +11,7 @@ export function Brand() {
 export function LogoutButton() {
   return (
     <form action="/api/auth/logout" method="post">
-      <button className="text-sm text-slate-400 hover:text-white">Salir</button>
+      <button className="text-sm text-[#5f6368] hover:text-[#1f1f1f]">Salir</button>
     </form>
   );
 }
@@ -23,7 +23,7 @@ export function NavLink({ href, children }: { href: string; children: React.Reac
     <Link
       href={href}
       className={`block rounded-xl px-3 py-2 text-[13.5px] font-medium transition ${
-        active ? "bg-gold-500/15 text-gold-400" : "text-slate-300 hover:bg-white/5 hover:text-white"
+        active ? "bg-[#e8f0fe] text-[#0b57d0]" : "text-[#3c4043] hover:bg-[#f1f3f4]"
       }`}
     >
       {children}
@@ -42,9 +42,9 @@ export function PageHeader({
 }) {
   return (
     <header className="space-y-1.5">
-      {kicker ? <p className="text-[11px] uppercase tracking-[0.22em] text-gold-500/80">{kicker}</p> : null}
-      <h1 className="font-display text-4xl leading-tight">{title}</h1>
-      {hint ? <p className="text-slate-400 text-sm max-w-2xl leading-relaxed">{hint}</p> : null}
+      {kicker ? <p className="text-[12px] font-medium text-[#0b57d0]">{kicker}</p> : null}
+      <h1 className="text-3xl sm:text-4xl font-normal tracking-tight leading-tight">{title}</h1>
+      {hint ? <p className="text-[#5f6368] text-sm max-w-2xl leading-relaxed">{hint}</p> : null}
     </header>
   );
 }

@@ -12,7 +12,7 @@ export default async function SuperadminLayout({ children }: { children: React.R
         <>
           <div>
             <Brand />
-            <p className="text-sm text-slate-400 mt-2">Configuración</p>
+            <p className="text-sm text-[#5f6368] mt-2">Configuración</p>
             <p className="text-xs text-slate-500">{count} negocios</p>
           </div>
           <nav className="space-y-0.5">
@@ -22,7 +22,7 @@ export default async function SuperadminLayout({ children }: { children: React.R
             <NavLink href="/superadmin">Negocios</NavLink>
             <NavLink href="/superadmin/canal">Probar recepción</NavLink>
           </nav>
-          <div className="pt-4 text-sm text-slate-400 border-t border-white/10 mt-auto">
+          <div className="pt-4 text-sm text-[#5f6368] border-t border-[#e8eaed] mt-auto">
             <p>{session.name}</p>
             <LogoutButton />
           </div>

@@ -37,8 +37,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <>
           <div>
             <Brand />
-            <p className="text-sm text-slate-200 mt-4 font-medium">{tenant.name}</p>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-sm text-[#1f1f1f] mt-4 font-medium">{tenant.name}</p>
+            <p className="text-xs text-[#5f6368] mt-1">
               {agents.client.name} · {agents.owner.name}
             </p>
           </div>
@@ -55,7 +55,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </NavLink>
             ))}
           </nav>
-          <div className="pt-4 text-sm text-slate-400 border-t border-white/10 mt-auto">
+          <div className="pt-4 text-sm text-[#5f6368] border-t border-[#e8eaed] mt-auto">
             <p>{session.name}</p>
             <LogoutButton />
           </div>

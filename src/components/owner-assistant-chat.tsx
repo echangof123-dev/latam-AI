@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { OWNER_VOICE } from "@/lib/brand";
 import { useVoiceCapture } from "./voice-capture";
+import { IconMic, IconSend, IconStop, Sparkle, ThinkingRow } from "./ai-mark";
 
 type Msg = { role: "user" | "ai"; text: string };
 
@@ -27,7 +28,6 @@ export function OwnerAssistantChat({
   clientName: string;
 }) {
   const first = ownerName.split(" ")[0] || "tú";
-  const initial = agentName.slice(0, 1).toUpperCase();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -35,7 +35,7 @@ export function OwnerAssistantChat({
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       role: "ai",
-      text: `Hola ${first}. Soy ${agentName}, asistente de ${tenantName}. Pregúntame por citas, clientes, horarios, ventas o cómo va ${clientName} con el público.`,
+      text: `Hola ${first}. Soy ${agentName}, asistente de ${tenantName}. Pregúntame por citas, clientes, horarios o cómo va ${clientName} con el público.`,
     },
   ]);
   const box = useRef<HTMLDivElement>(null);
@@ -53,7 +53,7 @@ export function OwnerAssistantChat({
 
   useEffect(() => {
     box.current?.scrollTo({ top: box.current.scrollHeight, behavior: "smooth" });
-  }, [msgs]);
+  }, [msgs, busy]);
 
   useEffect(() => {
     if (loaded.current) return;
@@ -113,9 +113,7 @@ export function OwnerAssistantChat({
         const data = await res.json().catch(() => null);
         const reply = data?.reply || "No pude leer el CRM. Prueba otra vez.";
         setMsgs((m) => [...m, { role: "ai", text: reply }]);
-        setBusy(false);
         if (data?.reply && (heard || voiceOnRef.current)) void speakHuman(reply);
-        return;
       } catch {
         setMsgs((m) => [...m, { role: "ai", text: "Hay un problema de conexión." }]);
       } finally {
@@ -130,7 +128,7 @@ export function OwnerAssistantChat({
       if (!said.trim()) {
         setMsgs((m) => [
           ...m,
-          { role: "ai", text: "No alcancé a oír. En el celular pulsa Hablar, habla y luego Parar; o escribe." },
+          { role: "ai", text: "No alcancé a oír. Pulsa el micrófono, habla y vuelve a pulsarlo; o escribe." },
         ]);
         return;
       }
@@ -140,86 +138,94 @@ export function OwnerAssistantChat({
   );
 
   const { listening, toggle } = useVoiceCapture(onVoice);
-
-  const status = speaking
-    ? "Hablando…"
-    : busy
-      ? "Consultando el negocio…"
-      : listening
-        ? "Te escucho… pulsa Parar"
-        : voiceOn
-          ? "En línea · voz de hombre"
-          : "En línea · sin voz";
+  const fresh = msgs.length === 1 && msgs[0].role === "ai";
 
   return (
-    <div className="card overflow-hidden p-0 flex flex-col h-[calc(100dvh-12.5rem)] sm:h-[min(38rem,calc(100dvh-8rem))]">
-      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/10 flex flex-wrap items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className={`agent-face agent-face-owner ${speaking ? "ring-2 ring-sky-300/60" : ""}`}>{initial}</span>
-          <div className="min-w-0">
-            <p className="text-base sm:text-lg font-semibold leading-tight truncate">{agentName}</p>
-            <p className="text-xs sm:text-sm text-slate-400 truncate">{tenantName} · asistente interno</p>
-            <p className="text-xs text-emerald-400 mt-0.5">{status}</p>
-          </div>
-        </div>
+    <div className="flex flex-col h-full min-h-0">
+      <div className="shrink-0 flex items-center justify-center gap-3 px-4 pt-2">
+        <p className="text-sm text-[#5f6368]">
+          {agentName} · {tenantName}
+        </p>
         <button
           type="button"
-          className={`text-xs rounded-full px-3 py-1.5 border shrink-0 ${
-            voiceOn ? "border-gold-500/50 text-gold-400" : "border-white/15 text-slate-400"
-          }`}
+          className="text-xs rounded-full px-3 py-1 border border-[#dadce0] text-[#5f6368] bg-white"
           onClick={() => setVoiceOn((v) => !v)}
         >
-          {voiceOn ? "Voz encendida" : "Voz apagada"}
+          {voiceOn ? "Voz on" : "Voz off"}
         </button>
       </div>
 
-      <div className="px-3 pt-3 flex flex-wrap gap-2 shrink-0">
-        {SUGGESTIONS.map((s) => (
-          <button
-            key={s}
-            type="button"
-            className="text-xs rounded-full border border-white/15 px-3 py-1.5 text-slate-300 hover:border-gold-500/50 hover:text-gold-400"
-            disabled={busy}
-            onClick={() => void send(s)}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-
-      <div ref={box} className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-3 space-y-3">
-        {msgs.map((m, i) => (
-          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <p className={m.role === "user" ? "chat-user" : "chat-agent"}>{m.text}</p>
+      <div ref={box} className="flex-1 min-h-0 overflow-y-auto">
+        {fresh ? (
+          <div className="h-full grid place-items-center px-6 text-center">
+            <div>
+              <div className="flex justify-center mb-5">
+                <Sparkle size={48} pulse={speaking || busy} />
+              </div>
+              <h1 className="text-[2rem] sm:text-5xl font-normal tracking-tight">Hola, {first}</h1>
+              <p className="mt-3 text-[#5f6368] text-base sm:text-lg max-w-md mx-auto">
+                Soy {agentName}. Pregúntame cómo va {tenantName}.
+              </p>
+              <div className="mt-8 flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
+                {SUGGESTIONS.map((s) => (
+                  <button key={s} type="button" className="chip" disabled={busy} onClick={() => void send(s)}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        ))}
+        ) : (
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+            {msgs.map((m, i) =>
+              m.role === "user" ? (
+                <div key={i} className="flex justify-end">
+                  <p className="chat-user">{m.text}</p>
+                </div>
+              ) : (
+                <div key={i} className="flex gap-3 items-start">
+                  <span className="mt-1 shrink-0">
+                    <Sparkle size={20} />
+                  </span>
+                  <p className="chat-agent">{m.text}</p>
+                </div>
+              ),
+            )}
+            {busy ? <ThinkingRow label="Consultando el negocio" /> : null}
+            {speaking && !busy ? <ThinkingRow label="Hablando" /> : null}
+          </div>
+        )}
       </div>
 
       <form
-        className="border-t border-white/10 p-3 sm:p-4 flex gap-2 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        className="shrink-0 px-3 sm:px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 max-w-3xl mx-auto w-full"
         onSubmit={(e) => {
           e.preventDefault();
           void send(text);
         }}
       >
-        <button
-          type="button"
-          onClick={() => void toggle()}
-          className={`rounded-xl px-3 sm:px-4 font-semibold shrink-0 ${listening ? "bg-red-500 text-white" : "btn-ghost"}`}
-        >
-          {listening ? "Parar" : "Hablar"}
-        </button>
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={`Pregúntale a ${agentName}…`}
-          className="flex-1 min-w-0"
-          disabled={busy}
-          autoComplete="off"
-        />
-        <button type="submit" className="btn-gold shrink-0" disabled={busy}>
-          {busy ? "…" : "Preguntar"}
-        </button>
+        {listening ? <p className="text-center text-sm text-[#d93025] mb-2">Te escucho… pulsa otra vez para enviar</p> : null}
+        <div className="composer">
+          <button
+            type="button"
+            onClick={() => void toggle()}
+            className={listening ? "icon-btn icon-btn-on" : "icon-btn"}
+            aria-label={listening ? "Parar" : "Hablar"}
+          >
+            {listening ? <IconStop /> : <IconMic />}
+          </button>
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={`Pregúntale a ${agentName}`}
+            className="flex-1 min-w-0"
+            disabled={busy}
+            autoComplete="off"
+          />
+          <button type="submit" className="send-btn" disabled={busy || !text.trim()} aria-label="Enviar">
+            <IconSend />
+          </button>
+        </div>
       </form>
     </div>
   );

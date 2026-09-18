@@ -27,8 +27,8 @@ export function ResponsiveShell({
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[260px_1fr]">
-      <header className="lg:hidden sticky top-0 z-40 flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10 bg-[#080d16]/95 backdrop-blur-md">
-        <p className="font-display text-lg text-white">Eje Uno</p>
+      <header className="lg:hidden sticky top-0 z-40 flex items-center justify-between gap-3 px-4 py-3 border-b border-[#e1e5ea] bg-[#f0f4f9]/90 backdrop-blur-md">
+        <p className="text-[17px] font-medium tracking-tight">Eje Uno</p>
         <div className="flex gap-2">
           <Link href="/chat" className="btn-gold py-2 px-3 text-sm">
             Hablar
@@ -43,7 +43,7 @@ export function ResponsiveShell({
         <button
           type="button"
           aria-label="Cerrar menú"
-          className="lg:hidden fixed inset-0 z-40 bg-black/60"
+          className="lg:hidden fixed inset-0 z-40 bg-black/30"
           onClick={() => setOpen(false)}
         />
       ) : null}
