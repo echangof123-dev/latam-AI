@@ -16,6 +16,13 @@ html,
 body {
   min-height: 100%;
   overflow-x: hidden;
+  background: #f0f4f9;
+}
+
+body {
+  @apply antialiased;
+  color: #1f1f1f;
+  background: #f0f4f9;
 }
 
 @media (max-width: 640px) {

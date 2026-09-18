@@ -27,7 +27,7 @@ export function ReceptionistChat({ businesses }: { businesses: Biz[] }) {
 
   const current = useMemo(() => businesses.find((b) => b.phone === to) || businesses[0], [businesses, to]);
   const agent = current?.clientName || "Sofía";
-  const bizName = current?.name || "el negocio";
+  const bizName = (current?.name || "el negocio").trim();
 
   const [msgs, setMsgs] = useState<Msg[]>([
     { role: "ai", text: `Hola, soy ${agent}, de ${bizName}. ¿En qué te ayudo hoy?` },
